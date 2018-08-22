@@ -6,7 +6,6 @@ function instance(system, id, config) {
 	var self = this;
 	// super-constructor
 	instance_skel.apply(this, arguments);
-	self.togglePlayState = 1;
 	self.actions(); // export actions
 	return self;
 }
@@ -46,7 +45,8 @@ instance.prototype.destroy = function() {
 };
 
 instance.prototype.fader_val = [
-		{ label: '- ∞',         id: '0.0' },
+
+		{ label: '- ∞',        id: '0.0' },
 		{ label: '-50 dB: ',   id: '0.1251' },
 		{ label: '-30 dB',     id: '0.251' },
 		{ label: '-20 dB',     id: '0.375' },
@@ -103,40 +103,218 @@ instance.prototype.actions = function(system) {
 	var self = this;
 	self.system.emit('instance_actions', self.id, {
 
-		'channel_mute':     {
-			label:      'Set the channel mute',
+		'mute':     {
+			label:      'Set mute',
 			options: [
 				{
-				type:     'textinput',
-				label:    'Channel number 01-16 ( use leading 0 on all single digit channels 01 ,02 ...)',
-				id:       'channel',
-				default:  '01',
-				regex:    self.REGEX_NUMBER
+					type:     'dropdown',
+					label:    'Type',
+					id:       'type',
+					choices:  [
+						{ id: '/ch/',      label: 'Channel 01-16' },
+						{ id: '/rtn/',     label: 'Fx Return 1-4' },
+						{ id: '/fxsend/',  label: 'Fx Send 1-4'  },
+						{ id: '/bus/',     label: 'Bus 1-6'  }
+					 ]
 				},
 				{
-				type:     'dropdown',
-				label:    'Mute / Unmute',
-				id:       'mute',
-				choices:  [ { id: '0', label: 'Mute' }, { id: '1', label: 'Unmute' } ]
+					type:     'textinput',
+					label:    'Ch, Fxrtn,Fx Send, Bus ( use leading 0 on all single digit numbers 01 ,02 for Channel not for Fx rtn, Fx send and Bus) ',
+					id:       'num',
+					default:  '01',
+					regex:    self.REGEX_NUMBER
+				},
+				{
+					type:     'dropdown',
+					label:    'Mute / Unmute',
+					id:       'mute',
+					choices:  [ { id: '0', label: 'Mute' }, { id: '1', label: 'Unmute' } ]
+				},
+			]
+		},
+
+		'mMute':     {
+			label:        'Set Main mute',
+			options: [
+				{
+					type:     'dropdown',
+					label:    'Mute / Unmute',
+					id:       'mute',
+					choices:  [ { id: '0', label: 'Mute' }, { id: '1', label: 'Unmute' } ]
+				},
+			]
+		},
+
+		'usbMute':     {
+			label:        'Set USB mute',
+			options: [
+				{
+					type:     'dropdown',
+					label:    'Mute / Unmute',
+					id:       'mute',
+					choices:  [ { id: '0', label: 'Mute' }, { id: '1', label: 'Unmute' } ]
+				},
+			]
+		},
+
+		'fad':     {
+			label:        'Set fader level',
+			options: [
+				{
+					type:     'dropdown',
+					label:    'Type',
+					id:       'type',
+					choices:  [
+						{ id: '/ch/',      label: 'Channel 01-16' },
+						{ id: '/rtn/',     label: 'Fx Return 1-4' },
+						{ id: '/fxsend/',  label: 'Fx Send 1-4'  },
+						{ id: '/bus/',     label: 'Bus 1-6'  }
+					 ]
+				},
+				{
+					type:     'textinput',
+					label:    'Ch, Fxrtn,Fx Send, Bus ( use leading 0 on all single digit numbers 01 ,02 for Channel not for Fx rtn, Fx send and Bus) ',
+					id:       'num',
+					default:  '01',
+					regex:    self.REGEX_NUMBER
+				},
+				{
+					type:     'dropdown',
+					label:    'Fader Level',
+					id:       'fad',
+					choices:  self.fader_val
 				}
 			]
 		},
 
-		'channel_fad':     {
-			label:      'Channel fader level',
+		'mFad':     {
+			label:        'Set Main fader level',
 			options: [
 				{
-				type:     'textinput',
-				label:    'Channel number 01-16 (Use leading 0 on all single digit channels 01 ,02 ...)',
-				id:       'channel',
-				default:  '01',
-				regex:    self.REGEX_NUMBER
+					type:     'dropdown',
+					label:    'Fader Level',
+					id:       'fad',
+					choices:  self.fader_val
+				}
+			]
+		},
+
+		'usbFad':     {
+			label:        'Set USB fader level',
+			options: [
+				{
+					type:     'dropdown',
+					label:    'Fader Level',
+					id:       'fad',
+					choices:  self.fader_val
+				}
+			]
+		},
+
+		'label':     {
+			label:     'Set label',
+			options: [
+				{
+					type:     'dropdown',
+					label:    'Type',
+					id:       'type',
+					choices:  [
+						{ id: '/ch/',      label: 'Channel 01-16' },
+						{ id: '/rtn/',     label: 'Fx Return 1-4' },
+						{ id: '/fxsend/',  label: 'Fx Send 1-4'  },
+						{ id: '/bus/',     label: 'Bus 1-6'  }
+					 ]
 				},
 				{
-				type:     'dropdown',
-				label:    'Fader Level',
-				id:       'fad',
-				choices:  self.fader_val
+					type:    'textinput',
+					label:   'Ch, Fxrtn,Fx Send, Bus ( use leading 0 on all single digit numbers 01 ,02 for Channel not for Fx rtn, Fx send and Bus) ',
+					id:      'num',
+					default: '01',
+					regex: self.REGEX_NUMBER
+				},
+				{
+					type:    'textinput',
+					label:   'Label',
+					id:      'lab',
+					default: ''
+				}
+			]
+		},
+
+		'mLabel':     {
+			label:       'Set Main label',
+			options: [
+				{
+					type:    'textinput',
+					label:   'Label',
+					id:      'lab',
+					default: ''
+				}
+			]
+		},
+
+		'usbLabel':     {
+			label:       'Set USB label',
+			options: [
+				{
+					type:    'textinput',
+					label:   'Label',
+					id:      'lab',
+					default: ''
+				}
+			]
+		},
+
+		'color':     {
+			label:     'Set color',
+			options: [
+				{
+					type:     'dropdown',
+					label:    'Type',
+					id:       'type',
+					choices:  [
+						{ id: '/ch/',      label: 'Channel 01-16' },
+						{ id: '/rtn/',     label: 'Fx Return 1-4' },
+						{ id: '/fxsend/',  label: 'Fx Send 1-4'  },
+						{ id: '/bus/',     label: 'Bus 1-6'  }
+					 ]
+				},
+				{
+					type:    'textinput',
+					label:   'Ch, Fxrtn,Fx Send, Bus ( use leading 0 on all single digit numbers 01 ,02 for Channel not for Fx rtn, Fx send and Bus) ',
+					id:      'num',
+					default: '01',
+					regex:   self.REGEX_NUMBER
+				},
+				{
+					type:    'dropdown',
+					label:   'color',
+					id:      'col',
+					choices: self.color_val
+				}
+			]
+		},
+
+		'mColor':     {
+			label:     'Set Main color',
+			options: [
+				{
+					type:    'dropdown',
+					label:   'color',
+					id:      'col',
+					choices: self.color_val
+				}
+			]
+		},
+
+		'usbColor':     {
+			label:     'Set USB color',
+			options: [
+				{
+					type:    'dropdown',
+					label:   'color',
+					id:      'col',
+					choices: self.color_val
 				}
 			]
 		},
@@ -145,55 +323,17 @@ instance.prototype.actions = function(system) {
 			label:     'Mute Group ON/OFF',
 			options: [
 				{
-				type:    'textinput',
-				label:   'Mute Group Number (1-4)',
-				id:      'mute_grp',
-				default: '1',
-				regex: self.REGEX_NUMBER
+					type:    'textinput',
+					label:   'Mute Group Number (1-4)',
+					id:      'mute_grp',
+					default: '1',
+					regex: self.REGEX_NUMBER
 				},
 				{
-				type:    'dropdown',
-				label:   'Mute / Unmute',
-				id:      'mute',
-				choices: [ { id: '1', label: 'Mute' }, { id: '0', label: 'Unmute' } ]
-				}
-			]
-		},
-
-		'channel_label':     {
-			label:     'Set the channel label',
-			options: [
-				{
-				type:    'textinput',
-				label:   'Channel number 01-16 (Use leading 0 on all single digit channels 01 ,02 ...)',
-				id:      'channel',
-				default: '01',
-				regex: self.REGEX_NUMBER
-				},
-				{
-				type:    'textinput',
-				label:   'Channel Label',
-				id:      'ch_lab',
-				default: ''
-				}
-			]
-		},
-
-		'channel_color':     {
-			label:     'Set the channel color',
-			options: [
-				{
-				type:    'textinput',
-				label:   'Channel number 01-16 (Use leading 0 on all single digit channels 01 ,02 ...)',
-				id:      'channel',
-				default: '01',
-				regex:   self.REGEX_NUMBER
-				},
-				{
-				type:    'dropdown',
-				label:   'Channel color',
-				id:      'ch_col',
-				choices: self.color_val
+					type:    'dropdown',
+					label:   'Mute / Unmute',
+					id:      'mute',
+					choices: [ { id: '1', label: 'Mute' }, { id: '0', label: 'Unmute' } ]
 				}
 			]
 		},
@@ -203,11 +343,11 @@ instance.prototype.actions = function(system) {
 			label:     'Load Console Snapshot',
 			options: [
 				{
-				type:    'textinput',
-				label:   'Snapshot Nr 1-64',
-				id:      'snap',
-				default: '1',
-				regex:   self.REGEX_NUMBER
+					type:    'textinput',
+					label:   'Snapshot Nr 1-64',
+					id:      'snap',
+					default: '1',
+					regex:   self.REGEX_NUMBER
 				}
 
 			]
@@ -218,10 +358,10 @@ instance.prototype.actions = function(system) {
 			options: [
 
 				{
-				type:    'dropdown',
-				label:   'Function',
-				id:      'tFunc',
-				choices: self.tape_func
+					type:    'dropdown',
+					label:   'Function',
+					id:      'tFunc',
+					choices: self.tape_func
 				}
 			]
 		}
@@ -231,62 +371,123 @@ instance.prototype.actions = function(system) {
 
 instance.prototype.action = function(action) {
 	var self = this;
-	var id = action.action;
 	var cmd
 	var opt = action.options
 
 
 	switch (action.action){
 
-		case 'mute_grp':
+		case 'mute':
 			var arg = {
 				type: "i",
-				value: opt.mute
+				value: parseInt(opt.mute)
 			};
-			self.system.emit('osc_send', self.config.host, 10024,'/config/mute/'+ opt.mute_grp  , [arg]);
+			cmd = opt.type + opt.num + '/mix/on';
 		break;
 
-		case 'channel_mute':
+		case 'mMute':
 			var arg = {
 				type: "i",
-				value: opt.mute
+				value: parseInt(opt.mute)
 			};
-			self.system.emit('osc_send', self.config.host, 10024,'/ch/' + opt.channel + '/mix/on' ,[arg]);
+			cmd = '/lr/mix/on';
 		break;
 
-		case 'channel_fad':
+		case 'usbMute':
+			var arg = {
+				type: "i",
+				value: parseInt(opt.mute)
+			};
+			cmd = '/rtn/aux/mix/on';
+		break;
+
+		case 'fad':
 			var arg = {
 				type: "f",
 				value: parseFloat(opt.fad)
 			};
-			self.system.emit('osc_send', self.config.host, 10024,'/ch/' + opt.channel + '/mix/fader' ,[arg]);
+			cmd = opt.type + opt.num + '/mix/fader';
 		break;
 
-		case 'channel_label':
+		case 'mFad':
+			var arg = {
+				type: "f",
+				value: parseFloat(opt.fad)
+			};
+			cmd = '/lr/mix/fader';
+		break;
+
+		case 'usbFad':
+			var arg = {
+				type: "f",
+				value: parseFloat(opt.fad)
+			};
+			cmd = '/rtn/aux/mix/fader';
+		break;
+
+		case 'label':
 			var arg = {
 				type: "s",
-				value: "" + opt.ch_lab
+				value: "" + opt.lab
 			};
-			self.system.emit('osc_send', self.config.host, 10024,'/ch/' + opt.channel + '/config/name' ,[arg]);
+			cmd = opt.type + opt.num + '/config/name';
 		break;
 
-		case 'channel_color':
+		case 'mLabel':
+			var arg = {
+				type: "s",
+				value: "" + opt.lab
+			};
+			cmd = '/lr/config/name';
+		break;
+
+		case 'usbLabel':
+			var arg = {
+				type: "s",
+				value: "" + opt.lab
+			};
+			cmd = '/rtn/aux/config/name';
+		break;
+
+		case 'color':
 		var arg = {
 			type: "i",
-			value: opt.ch_col
+			value: parseInt(opt.col)
 		};
-		self.system.emit('osc_send', self.config.host, 10024,'/ch/' + opt.channel + '/config/color' ,[arg]);
+		cmd = opt.type + opt.num + '/config/color';
+
 		break;
 
+		case 'mColor':
+		var arg = {
+			type: "i",
+			value: parseInt(opt.col)
+		};
+		cmd = '/lr/config/color';
+		break;
 
+		case 'usbColor':
+		var arg = {
+			type: "i",
+			value: parseInt(opt.col)
+		};
+		cmd = '/rtn/aux/config/color';
+		break;
+
+		case 'mute_grp':
+			var arg = {
+				type: "i",
+				value: parseInt(opt.mute)
+			};
+			cmd = '/config/mute/'+ opt.mute_grp;
+		break;
 
 		case 'load_snap':
 			var arg = {
 				type: "i",
 				value: parseInt(opt.snap)
 			};
-		self.system.emit('osc_send', self.config.host, 10024,'/-snap/load'  ,[arg]);
-		debug('/‐snap/load', arg);
+			cmd = '/-snap/load';
 		break;
 
 		case 'tape':
@@ -294,13 +495,14 @@ instance.prototype.action = function(action) {
 				type: "i",
 				value: parseInt(opt.tFunc)
 			};
-		self.system.emit('osc_send', self.config.host, 10024,'/-stat/tape/state'  ,[arg]);
-		debug ('/-stat/tape/state', arg);
+			cmd = '/-stat/tape/state';
 		break;
+	}
 
-
-}
-
+	if (cmd !== undefined) {
+		self.system.emit('osc_send', self.config.host, 10024,cmd  ,[arg]);
+		debug (cmd, arg);
+	}
 
 
 
