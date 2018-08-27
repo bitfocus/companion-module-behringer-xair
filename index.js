@@ -115,11 +115,12 @@ instance.prototype.actions = function(system) {
 						{ id: '/rtn/',     label: 'Fx Return 1-4' },
 						{ id: '/fxsend/',  label: 'Fx Send 1-4'  },
 						{ id: '/bus/',     label: 'Bus 1-6'  }
-					 ]
+					],
+					default: '/ch/'
 				},
 				{
 					type:     'textinput',
-					label:    'Ch, Fxrtn,Fx Send, Bus ( use leading 0 on all single digit numbers 01 ,02 for Channel not for Fx rtn, Fx send and Bus) ',
+					label:    'Channel, Fx Return, Fx Send, Bus ( use leading 0 on all single digit numbers for Channels, not for Fx Return, Fx Send and Bus) ',
 					id:       'num',
 					default:  '01',
 					regex:    self.REGEX_NUMBER
@@ -169,11 +170,12 @@ instance.prototype.actions = function(system) {
 						{ id: '/rtn/',     label: 'Fx Return 1-4' },
 						{ id: '/fxsend/',  label: 'Fx Send 1-4'  },
 						{ id: '/bus/',     label: 'Bus 1-6'  }
-					 ]
+					],
+					default:  '/ch/'
 				},
 				{
 					type:     'textinput',
-					label:    'Ch, Fxrtn,Fx Send, Bus ( use leading 0 on all single digit numbers 01 ,02 for Channel not for Fx rtn, Fx send and Bus) ',
+					label:    'Channel, Fx Return, Fx Send, Bus ( use leading 0 on all single digit numbers for Channels, not for Fx Return, Fx Send and Bus) ',
 					id:       'num',
 					default:  '01',
 					regex:    self.REGEX_NUMBER
@@ -223,11 +225,12 @@ instance.prototype.actions = function(system) {
 						{ id: '/rtn/',     label: 'Fx Return 1-4' },
 						{ id: '/fxsend/',  label: 'Fx Send 1-4'  },
 						{ id: '/bus/',     label: 'Bus 1-6'  }
-					 ]
+					],
+					default:  '/ch/'
 				},
 				{
 					type:    'textinput',
-					label:   'Ch, Fxrtn,Fx Send, Bus ( use leading 0 on all single digit numbers 01 ,02 for Channel not for Fx rtn, Fx send and Bus) ',
+					label:   'Channel, Fx Return, Fx Send, Bus ( use leading 0 on all single digit numbers for Channels, not for Fx Return, Fx Send and Bus) ',
 					id:      'num',
 					default: '01',
 					regex: self.REGEX_NUMBER
@@ -277,11 +280,12 @@ instance.prototype.actions = function(system) {
 						{ id: '/rtn/',     label: 'Fx Return 1-4' },
 						{ id: '/fxsend/',  label: 'Fx Send 1-4'  },
 						{ id: '/bus/',     label: 'Bus 1-6'  }
-					 ]
+					],
+					default:  '/ch/'
 				},
 				{
 					type:    'textinput',
-					label:   'Ch, Fxrtn,Fx Send, Bus ( use leading 0 on all single digit numbers 01 ,02 for Channel not for Fx rtn, Fx send and Bus) ',
+					label:   'Channel, Fx Return, Fx Send, Bus ( use leading 0 on all single digit numbers for Channels, not for Fx Return, Fx Send and Bus) ',
 					id:      'num',
 					default: '01',
 					regex:   self.REGEX_NUMBER
@@ -511,7 +515,7 @@ instance.prototype.action = function(action) {
 instance.module_info = {
 	label: 'Midas Mr / Behringer Xr',
 	id: 'xair',
-	version: '0.0.1'
+	version: '0.0.2'
 };
 
 instance_skel.extendedBy(instance);
