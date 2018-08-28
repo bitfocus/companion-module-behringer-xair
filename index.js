@@ -120,9 +120,9 @@ instance.prototype.actions = function(system) {
 				},
 				{
 					type:     'textinput',
-					label:    'Channel, Fx Return, Fx Send, Bus ( use leading 0 on all single digit numbers for Channels, not for Fx Return, Fx Send and Bus) ',
+					label:    'Channel, Fx Return, Fx Send or Bus Number',
 					id:       'num',
-					default:  '01',
+					default:  '1',
 					regex:    self.REGEX_NUMBER
 				},
 				{
@@ -166,7 +166,7 @@ instance.prototype.actions = function(system) {
 					label:    'Type',
 					id:       'type',
 					choices:  [
-						{ id: '/ch/',      label: 'Channel 01-16' },
+						{ id: '/ch/',      label: 'Channel 1-16' },
 						{ id: '/rtn/',     label: 'Fx Return 1-4' },
 						{ id: '/fxsend/',  label: 'Fx Send 1-4'  },
 						{ id: '/bus/',     label: 'Bus 1-6'  }
@@ -175,9 +175,9 @@ instance.prototype.actions = function(system) {
 				},
 				{
 					type:     'textinput',
-					label:    'Channel, Fx Return, Fx Send, Bus ( use leading 0 on all single digit numbers for Channels, not for Fx Return, Fx Send and Bus) ',
+					label:    'Channel, Fx Return, Fx Send or Bus Number',
 					id:       'num',
-					default:  '01',
+					default:  '1',
 					regex:    self.REGEX_NUMBER
 				},
 				{
@@ -221,7 +221,7 @@ instance.prototype.actions = function(system) {
 					label:    'Type',
 					id:       'type',
 					choices:  [
-						{ id: '/ch/',      label: 'Channel 01-16' },
+						{ id: '/ch/',      label: 'Channel 1-16' },
 						{ id: '/rtn/',     label: 'Fx Return 1-4' },
 						{ id: '/fxsend/',  label: 'Fx Send 1-4'  },
 						{ id: '/bus/',     label: 'Bus 1-6'  }
@@ -230,9 +230,9 @@ instance.prototype.actions = function(system) {
 				},
 				{
 					type:    'textinput',
-					label:   'Channel, Fx Return, Fx Send, Bus ( use leading 0 on all single digit numbers for Channels, not for Fx Return, Fx Send and Bus) ',
+					label:   'Channel, Fx Return, Fx Send or Bus Number',
 					id:      'num',
-					default: '01',
+					default: '1',
 					regex: self.REGEX_NUMBER
 				},
 				{
@@ -263,7 +263,7 @@ instance.prototype.actions = function(system) {
 					type:    'textinput',
 					label:   'Label',
 					id:      'lab',
-					default: ''
+					default: 'USB'
 				}
 			]
 		},
@@ -276,7 +276,7 @@ instance.prototype.actions = function(system) {
 					label:    'Type',
 					id:       'type',
 					choices:  [
-						{ id: '/ch/',      label: 'Channel 01-16' },
+						{ id: '/ch/',      label: 'Channel 1-16' },
 						{ id: '/rtn/',     label: 'Fx Return 1-4' },
 						{ id: '/fxsend/',  label: 'Fx Send 1-4'  },
 						{ id: '/bus/',     label: 'Bus 1-6'  }
@@ -285,9 +285,9 @@ instance.prototype.actions = function(system) {
 				},
 				{
 					type:    'textinput',
-					label:   'Channel, Fx Return, Fx Send, Bus ( use leading 0 on all single digit numbers for Channels, not for Fx Return, Fx Send and Bus) ',
+					label:   'Channel, Fx Return, Fx Send or Bus Number',
 					id:      'num',
-					default: '01',
+					default: '1',
 					regex:   self.REGEX_NUMBER
 				},
 				{
@@ -377,6 +377,7 @@ instance.prototype.action = function(action) {
 	var self = this;
 	var cmd
 	var opt = action.options
+	var nVal = opt.num
 
 
 	switch (action.action){
@@ -386,7 +387,19 @@ instance.prototype.action = function(action) {
 				type: "i",
 				value: parseInt(opt.mute)
 			};
-			cmd = opt.type + opt.num + '/mix/on';
+			if (opt.type == '/ch/') {
+				if (opt.num <= 9){
+					nVal = ('0' + parseInt(opt.num)).substr(-2)
+				}
+				if (opt.num >= 10) {
+					nVal = parseInt(opt.num)
+				}
+			}
+			if (opt.type != '/ch/') {
+				nVal = parseInt(opt.num)
+			}
+
+			cmd = opt.type + nVal + '/mix/on';
 		break;
 
 		case 'mMute':
@@ -410,7 +423,18 @@ instance.prototype.action = function(action) {
 				type: "f",
 				value: parseFloat(opt.fad)
 			};
-			cmd = opt.type + opt.num + '/mix/fader';
+			if (opt.type == '/ch/') {
+				if (opt.num <= 9){
+					nVal = ('0' + parseInt(opt.num)).substr(-2)
+				}
+				if (opt.num >= 10) {
+					nVal = parseInt(opt.num)
+				}
+			}
+			if (opt.type != '/ch/') {
+				nVal = parseInt(opt.num)
+			}
+			cmd = opt.type + nVal + '/mix/fader';
 		break;
 
 		case 'mFad':
@@ -434,7 +458,18 @@ instance.prototype.action = function(action) {
 				type: "s",
 				value: "" + opt.lab
 			};
-			cmd = opt.type + opt.num + '/config/name';
+			if (opt.type == '/ch/') {
+				if (opt.num <= 9){
+					nVal = ('0' + parseInt(opt.num)).substr(-2)
+				}
+				if (opt.num >= 10) {
+					nVal = parseInt(opt.num)
+				}
+			}
+			if (opt.type != '/ch/') {
+				nVal = parseInt(opt.num)
+			}
+			cmd = opt.type + nVal + '/config/name';
 		break;
 
 		case 'mLabel':
@@ -458,8 +493,18 @@ instance.prototype.action = function(action) {
 			type: "i",
 			value: parseInt(opt.col)
 		};
-		cmd = opt.type + opt.num + '/config/color';
-
+		if (opt.type == '/ch/') {
+			if (opt.num <= 9){
+				nVal = ('0' + parseInt(opt.num)).substr(-2)
+			}
+			if (opt.num >= 10) {
+				nVal = parseInt(opt.num)
+			}
+		}
+		if (opt.type != '/ch/') {
+			nVal = parseInt(opt.num)
+		}
+		cmd = opt.type + nVal + '/config/color';
 		break;
 
 		case 'mColor':
