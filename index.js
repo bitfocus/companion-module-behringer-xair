@@ -377,7 +377,7 @@ instance.prototype.action = function(action) {
 	var self = this;
 	var cmd
 	var opt = action.options
-	var nVal = opt.num
+	var nVal
 
 
 	switch (action.action){
