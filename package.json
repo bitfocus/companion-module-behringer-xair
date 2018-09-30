@@ -1,11 +1,16 @@
 {
   "name": "xair",
-  "version": "0.0.2",
-  "description": "Module to control Midas MR and Behringer Xr series mixers",
+  "version": "1.0.0",
+	"api_version": "1.0.0",
+  "keywords": [ "Audio" ],
+  "manufacturer": "Behringer/Midas",
+  "product": "XR/MR",
+  "shortname": "xair",
+  "description": "Module to control Midas MR and Behringer XR series mixers",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "Per Roine",
+  "author": "Per Roine <per.roine@gmail.com>",
   "license": "MIT"
 }
