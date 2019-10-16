@@ -189,6 +189,33 @@ instance.prototype.actions = function(system) {
 			]
 		},
 
+		'send':     {
+			label:        'Set ch Sends',
+			options: [
+
+				{
+					type:     'textinput',
+					label:    'Channel Number',
+					id:       'chNum',
+					default:  '1',
+					regex:    self.REGEX_NUMBER
+				},
+				{
+					type:     'textinput',
+					label:    'Bus Number',
+					id:       'busNum',
+					default:  '1',
+					regex:    self.REGEX_NUMBER
+				},
+				{
+					type:     'dropdown',
+					label:    'Fader Level',
+					id:       'fad',
+					choices:  self.fader_val
+				}
+			]
+		},
+
 		'mFad':     {
 			label:        'Set Main fader level',
 			options: [
@@ -435,6 +462,21 @@ instance.prototype.action = function(action) {
 				nVal = parseInt(opt.num)
 			}
 			cmd = opt.type + nVal + '/mix/fader';
+		break;
+
+		case 'send':
+			var arg = {
+				type: "f",
+				value: parseFloat(opt.fad)
+			};
+				if (opt.chNum <= 9){
+					nVal = ('0' + parseInt(opt.chNum)).substr(-2)
+				}
+				if (opt.chNum >= 10) {
+					nVal = parseInt(opt.chNum)
+				}
+
+			cmd = '/ch/' + nVal + '/mix/' + '0' + opt.busNum + '/level';
 		break;
 
 		case 'mFad':
