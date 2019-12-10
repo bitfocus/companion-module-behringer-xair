@@ -15,6 +15,6 @@ Channel, USB, FX Send, Fx Return, Bus and Main color | Sets the color of the scr
 Mute Group | Turns the selected mute group on or off
 Load Console Snapshot | Loads the given Snapshot from the consoles internal Snapshot list 1-64
 Tape Operation | Stop,Play,PlayPause,Record,RecordPause,Fast Forward,Rewind of the tape Deck
-
+Bus sends | Bus sends for channels
 
 for additional actions please raise a feature request at [github](https://github.com/bitfocus/companion)
