@@ -1,12 +1,44 @@
 var instance_skel = require('../../instance_skel');
+var OSC = require('osc');
 var debug;
 var log;
 
 function instance(system, id, config) {
 	var self = this;
+	var po = 0;
+
+	self.currentSnapshot = {
+		name: '',
+		index: 0
+	};
+
+	self.myMixer = {
+		name: '',
+		model: '',
+		fwVersion: ''
+	};
+
 	// super-constructor
 	instance_skel.apply(this, arguments);
-	self.actions(); // export actions
+	self.defineConst('REGEX_1TO64','/^([1-9]|[1-5][0-9]|6[0-4])$/');
+
+	// each instance needs a separate local port
+	id.split('').forEach(function (c) {
+		po += c.charCodeAt(0);
+	});
+	self.port_offset = po;
+	self.init_actions(); // export actions
+	self.init_variables();
+	self.init_feedbacks();
+
+
+	self.addUpgradeScript(function (config, actions) {
+		var changed = false;
+		// any config changes?
+
+		return changed;
+	});
+
 	return self;
 }
 
@@ -21,11 +53,167 @@ instance.prototype.init = function() {
 	self.status(self.STATE_OK); // status ok!
 	debug = self.debug;
 	log = self.log;
+	self.init_osc();
+	self.init_variables();
+};
+
+/**
+ * heartbeat to request updates, expires every 10 seconds
+ */
+instance.prototype.pulse = function () {
+	var self = this;
+	self.sendOSC("/xremote", []);
+};
+
+
+instance.prototype.init_osc = function() {
+	var self = this;
+	var host = self.config.host;
+
+	if (self.oscPort) {
+		self.oscPort.close();
+	}
+	if (self.config.host) {
+		self.oscPort = new OSC.UDPPort ({
+			localAddress: "0.0.0.0",
+			localPort: 10024 + self.port_offset,
+			remoteAddress: self.config.host,
+			remotePort: 10024,
+			metadata: true
+		});
+
+		// listen for incoming messages
+		self.oscPort.on('message', function(message, timeTag, info) {
+			var args = message.args;
+			var node = message.address;
+
+			// debug("received ", message, "from", info);
+			if (node.match(/^\/xinfo$/)) {
+				self.myMixer.name = args[1].value;
+				self.myMixer.model = args[2].value;
+				self.myMixer.fw = args[3].value;
+				self.setVariable('m_name',	self.myMixer.name);
+				self.setVariable('m_model', self.myMixer.model);
+				self.setVariable('m_fw', self.myMixer.fw);
+			} else if (node.match(/^\/\-snap\/name$/)) {
+				self.currentSnapshot.name = args[0].value;
+				self.setVariable('s_name', self.currentSnapshot.name);
+			} else if (node.match(/^\/\-snap\/index$/)) {
+				self.currentSnapshot.index = args[0].value;
+				self.setVariable('s_index', self.currentSnapshot.index);
+				self.checkFeedbacks('snap_color');
+			}
+			// else {
+			// 	debug(message.address, args);
+			// }
+		});
+
+		self.oscPort.on('ready', function() {
+			self.status(self.STATUS_OK);
+			self.sendOSC("/xinfo",[]);
+			self.sendOSC('/-snap/name',[]);
+			self.sendOSC('/-snap/index',[]);
+			self.heartbeat = setInterval( function () { self.pulse(); },9500);
+		});
+
+		self.oscPort.on('close', function() {
+			if (self.heartbeat !== undefined) {
+				clearInterval(self.heartbeat);
+				self.heartbeat = undefined;
+			}
+		});
+
+		self.oscPort.on('error', function(err) {
+			self.log('error', "Error: " + err.message);
+			self.status(self.STATUS_ERROR, err.message);
+			if (self.heartbeat !== undefined) {
+				clearInterval(self.heartbeat);
+				self.heartbeat = undefined;
+			}
+		});
+
+		self.oscPort.open();
+
+	}
+};
+
+// define instance variables
+instance.prototype.init_variables = function() {
+
+	var variables = [
+		{
+			label: 'XAir Mixer Name',
+			name:  'm_name'
+		},
+		{
+			label: 'XAir Mixer Model',
+			name:  'm_model'
+		},
+		{
+			label: 'XAir Mixer Firmware',
+			name:  'm_fw'
+		},
+		{
+			label: 'Current Snapshot Name',
+			name:  's_name'
+		},
+		{
+			label: 'Current Snapshot Index',
+			name:  's_index'
+		}
+	];
+	this.setVariableDefinitions(variables);
+};
+
+// define instance variables
+instance.prototype.init_feedbacks = function() {
+
+	var feedbacks = {
+		snap_color: {
+			label: 'Color when Current Snapshot',
+			description: 'Set Button colors when a Snapshot is loaded',
+			options: [
+				{
+					type: 'colorpicker',
+					label: 'Foreground color',
+					id: 'fg',
+					default: '16777215'
+				},
+				{
+					type: 'colorpicker',
+					label: 'Background color',
+					id: 'bg',
+					default: rgb(0, 128, 0)
+				},
+				{
+					type: 'textinput',
+					label: 'Snapshot to match',
+					id: 'theSnap',
+					default: '1',
+					regex: this.REGEX_1TO64
+				}
+			]
+		},
+	};
+	this.setFeedbackDefinitions(feedbacks);
+};
+
+instance.prototype.feedback = function (feedback, bank) {
+	var options = feedback.options;
+	var ret = {};
+
+	switch (feedback.type) {
+	case 'snap_color':
+		if (options.theSnap == this.currentSnapshot.index) {
+			ret = { color: options.fg, bgcolor: options.bg };
+		}
+		break;
+	}
+	return ret;
 };
 
 // Return config fields for web config
 instance.prototype.config_fields = function () {
-	var self = this;
 	return [
 		{
 			type: 'textinput',
@@ -33,15 +221,32 @@ instance.prototype.config_fields = function () {
 			label: 'Target IP',
 			tooltip: 'The IP of the Mr / Xr console',
 			width: 6,
-			regex: self.REGEX_IP
+			regex: this.REGEX_IP
 		}
-	]
+	];
 };
 
 // When module gets deleted
 instance.prototype.destroy = function() {
+	if (this.heartbeat) {
+		clearInterval(this.heartbeat);
+	}
+	if (this.oscPort) {
+		this.oscPort.close();
+	}
+	debug("destroy", this.id);
+};
+
+instance.prototype.sendOSC = function (node, arg) {
 	var self = this;
-	debug("destory", self.id);;
+	var host = "";
+
+	if (self.oscPort) {
+		self.oscPort.send({
+			address: node,
+			args: arg
+		});
+	}
 };
 
 instance.prototype.fader_val = [
@@ -99,7 +304,7 @@ instance.prototype.tape_func = [
 		{ label: 'REWIND',              id: '6' }
 ];
 
-instance.prototype.actions = function(system) {
+instance.prototype.init_actions = function(system) {
 	var self = this;
 	self.system.emit('instance_actions', self.id, {
 
@@ -114,13 +319,14 @@ instance.prototype.actions = function(system) {
 						{ id: '/ch/',      label: 'Channel 01-16' },
 						{ id: '/rtn/',     label: 'Fx Return 1-4' },
 						{ id: '/fxsend/',  label: 'Fx Send 1-4'  },
-						{ id: '/bus/',     label: 'Bus 1-6'  }
+						{ id: '/bus/',     label: 'Bus 1-6'  },
+						{ id: '/dca/',	   label: 'DCA 1-4' }
 					],
 					default: '/ch/'
 				},
 				{
 					type:     'textinput',
-					label:    'Channel, Fx Return, Fx Send or Bus Number',
+					label:    'Channel, Fx Return, Fx Send, Bus, or DCA Number',
 					id:       'num',
 					default:  '1',
 					regex:    self.REGEX_NUMBER
@@ -398,39 +604,43 @@ instance.prototype.actions = function(system) {
 		}
 
 	});
-}
+};
 
 instance.prototype.action = function(action) {
 	var self = this;
-	var cmd
-	var opt = action.options
-	var nVal
+	var cmd;
+	var opt = action.options;
+	var nVal;
+	var arg = {};
 
 
 	switch (action.action){
 
 		case 'mute':
-			var arg = {
+			arg = {
 				type: "i",
 				value: parseInt(opt.mute)
 			};
 			if (opt.type == '/ch/') {
 				if (opt.num <= 9){
-					nVal = ('0' + parseInt(opt.num)).substr(-2)
+					nVal = ('0' + parseInt(opt.num)).substr(-2);
 				}
 				if (opt.num >= 10) {
-					nVal = parseInt(opt.num)
+					nVal = parseInt(opt.num);
 				}
 			}
 			if (opt.type != '/ch/') {
-				nVal = parseInt(opt.num)
+				nVal = parseInt(opt.num);
 			}
-
-			cmd = opt.type + nVal + '/mix/on';
+			if (opt.type == '/dca/') {
+				cmd = opt.type + nVal + "/on";
+			} else {
+				cmd = opt.type + nVal + '/mix/on';
+			}
 		break;
 
 		case 'mMute':
-			var arg = {
+			arg = {
 				type: "i",
 				value: parseInt(opt.mute)
 			};
@@ -438,7 +648,7 @@ instance.prototype.action = function(action) {
 		break;
 
 		case 'usbMute':
-			var arg = {
+			arg = {
 				type: "i",
 				value: parseInt(opt.mute)
 			};
@@ -446,41 +656,41 @@ instance.prototype.action = function(action) {
 		break;
 
 		case 'fad':
-			var arg = {
+			arg = {
 				type: "f",
 				value: parseFloat(opt.fad)
 			};
 			if (opt.type == '/ch/') {
 				if (opt.num <= 9){
-					nVal = ('0' + parseInt(opt.num)).substr(-2)
+					nVal = ('0' + parseInt(opt.num)).substr(-2);
 				}
 				if (opt.num >= 10) {
-					nVal = parseInt(opt.num)
+					nVal = parseInt(opt.num);
 				}
 			}
 			if (opt.type != '/ch/') {
-				nVal = parseInt(opt.num)
+				nVal = parseInt(opt.num);
 			}
 			cmd = opt.type + nVal + '/mix/fader';
 		break;
 
 		case 'send':
-			var arg = {
+			arg = {
 				type: "f",
 				value: parseFloat(opt.fad)
 			};
 				if (opt.chNum <= 9){
-					nVal = ('0' + parseInt(opt.chNum)).substr(-2)
+					nVal = ('0' + parseInt(opt.chNum)).substr(-2);
 				}
 				if (opt.chNum >= 10) {
-					nVal = parseInt(opt.chNum)
+					nVal = parseInt(opt.chNum);
 				}
 
 			cmd = '/ch/' + nVal + '/mix/' + '0' + opt.busNum + '/level';
 		break;
 
 		case 'mFad':
-			var arg = {
+			arg = {
 				type: "f",
 				value: parseFloat(opt.fad)
 			};
@@ -488,7 +698,7 @@ instance.prototype.action = function(action) {
 		break;
 
 		case 'usbFad':
-			var arg = {
+			arg = {
 				type: "f",
 				value: parseFloat(opt.fad)
 			};
@@ -496,26 +706,26 @@ instance.prototype.action = function(action) {
 		break;
 
 		case 'label':
-			var arg = {
+			arg = {
 				type: "s",
 				value: "" + opt.lab
 			};
 			if (opt.type == '/ch/') {
 				if (opt.num <= 9){
-					nVal = ('0' + parseInt(opt.num)).substr(-2)
+					nVal = ('0' + parseInt(opt.num)).substr(-2);
 				}
 				if (opt.num >= 10) {
-					nVal = parseInt(opt.num)
+					nVal = parseInt(opt.num);
 				}
 			}
 			if (opt.type != '/ch/') {
-				nVal = parseInt(opt.num)
+				nVal = parseInt(opt.num);
 			}
 			cmd = opt.type + nVal + '/config/name';
 		break;
 
 		case 'mLabel':
-			var arg = {
+			arg = {
 				type: "s",
 				value: "" + opt.lab
 			};
@@ -523,7 +733,7 @@ instance.prototype.action = function(action) {
 		break;
 
 		case 'usbLabel':
-			var arg = {
+			arg = {
 				type: "s",
 				value: "" + opt.lab
 			};
@@ -531,42 +741,42 @@ instance.prototype.action = function(action) {
 		break;
 
 		case 'color':
-		var arg = {
-			type: "i",
-			value: parseInt(opt.col)
-		};
-		if (opt.type == '/ch/') {
-			if (opt.num <= 9){
-				nVal = ('0' + parseInt(opt.num)).substr(-2)
+			arg = {
+				type: "i",
+				value: parseInt(opt.col)
+			};
+			if (opt.type == '/ch/') {
+				if (opt.num <= 9){
+					nVal = ('0' + parseInt(opt.num)).substr(-2);
+				}
+				if (opt.num >= 10) {
+					nVal = parseInt(opt.num);
+				}
 			}
-			if (opt.num >= 10) {
-				nVal = parseInt(opt.num)
+			if (opt.type != '/ch/') {
+				nVal = parseInt(opt.num);
 			}
-		}
-		if (opt.type != '/ch/') {
-			nVal = parseInt(opt.num)
-		}
-		cmd = opt.type + nVal + '/config/color';
+			cmd = opt.type + nVal + '/config/color';
 		break;
 
 		case 'mColor':
-		var arg = {
-			type: "i",
-			value: parseInt(opt.col)
-		};
-		cmd = '/lr/config/color';
+			arg = {
+				type: "i",
+				value: parseInt(opt.col)
+			};
+			cmd = '/lr/config/color';
 		break;
 
 		case 'usbColor':
-		var arg = {
-			type: "i",
-			value: parseInt(opt.col)
-		};
-		cmd = '/rtn/aux/config/color';
+			arg = {
+				type: "i",
+				value: parseInt(opt.col)
+			};
+			cmd = '/rtn/aux/config/color';
 		break;
 
 		case 'mute_grp':
-			var arg = {
+			arg = {
 				type: "i",
 				value: parseInt(opt.mute)
 			};
@@ -574,7 +784,7 @@ instance.prototype.action = function(action) {
 		break;
 
 		case 'load_snap':
-			var arg = {
+			arg = {
 				type: "i",
 				value: parseInt(opt.snap)
 			};
@@ -582,7 +792,7 @@ instance.prototype.action = function(action) {
 		break;
 
 		case 'tape':
-			var arg = {
+			arg = {
 				type: "i",
 				value: parseInt(opt.tFunc)
 			};
@@ -591,12 +801,9 @@ instance.prototype.action = function(action) {
 	}
 
 	if (cmd !== undefined) {
-		self.system.emit('osc_send', self.config.host, 10024,cmd  ,[arg]);
+		self.sendOSC(cmd,arg);
 		debug (cmd, arg);
 	}
-
-
-
 };
 
 instance_skel.extendedBy(instance);
