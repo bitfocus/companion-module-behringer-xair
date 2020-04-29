@@ -20,7 +20,6 @@ function instance(system, id, config) {
 
 	// super-constructor
 	instance_skel.apply(this, arguments);
-	self.defineConst('REGEX_1TO64','/^([1-9]|[1-5][0-9]|6[0-4])$/');
 
 	// each instance needs a separate local port
 	id.split('').forEach(function (c) {
@@ -30,14 +29,6 @@ function instance(system, id, config) {
 	self.init_actions(); // export actions
 	self.init_variables();
 	self.init_feedbacks();
-
-
-	self.addUpgradeScript(function (config, actions) {
-		var changed = false;
-		// any config changes?
-
-		return changed;
-	});
 
 	return self;
 }
@@ -99,7 +90,7 @@ instance.prototype.init_osc = function() {
 				self.currentSnapshot.name = args[0].value;
 				self.setVariable('s_name', self.currentSnapshot.name);
 			} else if (node.match(/^\/\-snap\/index$/)) {
-				self.currentSnapshot.index = args[0].value;
+				self.currentSnapshot.index = parseInt(args[0].value);
 				self.setVariable('s_index', self.currentSnapshot.index);
 				self.checkFeedbacks('snap_color');
 			}
@@ -139,6 +130,7 @@ instance.prototype.init_osc = function() {
 
 // define instance variables
 instance.prototype.init_variables = function() {
+	var self = this;
 
 	var variables = [
 		{
@@ -167,6 +159,7 @@ instance.prototype.init_variables = function() {
 
 // define instance variables
 instance.prototype.init_feedbacks = function() {
+	var self = this;
 
 	var feedbacks = {
 		snap_color: {
@@ -183,33 +176,27 @@ instance.prototype.init_feedbacks = function() {
 					type: 'colorpicker',
 					label: 'Background color',
 					id: 'bg',
-					default: rgb(0, 128, 0)
+					default: self.rgb(0, 128, 0)
 				},
 				{
-					type: 'textinput',
+					type: 'number',
 					label: 'Snapshot to match',
 					id: 'theSnap',
-					default: '1',
-					regex: this.REGEX_1TO64
+					default: 1,
+					min: 1,
+					max: 64,
+					range: false,
+					required: true
 				}
-			]
-		},
+			],
+			callback: function(feedback, bank) {
+				if (feedback.options.theSnap == self.currentSnapshot.index) {
+					return { color: feedback.options.fg, bgcolor: feedback.options.bg };
+				}
+			}
+		}
 	};
 	this.setFeedbackDefinitions(feedbacks);
-};
-
-instance.prototype.feedback = function (feedback, bank) {
-	var options = feedback.options;
-	var ret = {};
-
-	switch (feedback.type) {
-	case 'snap_color':
-		if (options.theSnap == this.currentSnapshot.index) {
-			ret = { color: options.fg, bgcolor: options.bg };
-		}
-		break;
-	}
-	return ret;
 };
 
 // Return config fields for web config
