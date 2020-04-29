@@ -104,6 +104,7 @@ instance.prototype.init_osc = function() {
 			self.sendOSC("/xinfo",[]);
 			self.sendOSC('/-snap/name',[]);
 			self.sendOSC('/-snap/index',[]);
+			self.pulse();
 			self.heartbeat = setInterval( function () { self.pulse(); },9500);
 		});
 
@@ -561,7 +562,6 @@ instance.prototype.init_actions = function(system) {
 				}
 			]
 		},
-
 
 		'load_snap':     {
 			label:     'Load Console Snapshot',
