@@ -228,6 +228,12 @@ instance.prototype.config_fields = function () {
 
 // When module gets deleted
 instance.prototype.destroy = function() {
+	if (this.heartbeat) {
+		clearInterval(this.heartbeat);
+	}
+	if (this.oscPort) {
+		this.oscPort.close();
+	}
 	debug("destroy", this.id);
 };
 
