@@ -3,7 +3,7 @@
 	"legacy": [
 		"xair"
 	],
-	"version": "1.2.0",
+	"version": "1.2.2",
 	"api_version": "1.0.0",
 	"keywords": [
 		"Audio"
@@ -18,7 +18,8 @@
 	},
 	"author": "Per Roine <per.roine@gmail.com>",
 	"contributors": [
-		"John Knight, Jr <istnv@ayesti.com>"
+		"John Knight, Jr <istnv@ayesti.com>",
+		"Janos Münker"
 	],
 	"license": "MIT"
 }
