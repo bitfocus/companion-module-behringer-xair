@@ -628,7 +628,6 @@ instance.prototype.action = function(action) {
 	var nVal;
 	var arg = {};
 
-	
 	switch (action.action){
 
 		case 'mute':
