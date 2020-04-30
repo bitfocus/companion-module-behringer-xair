@@ -628,19 +628,7 @@ instance.prototype.action = function(action) {
 	var nVal;
 	var arg = {};
 
-	// if (['mute','mMute','usbMute'].includes(action.action)) {
-	// 	if (action.options.mute === null) {
-	// 		action.options.mute = '0';
-	// 		changed = true;
-	// 	}
-	// }
-	// if ('mute_grp' == action.action) {
-	// 	if (action.options.mute === null) {
-	// 		action.options.mute = '1';
-	// 		changed = true;
-	// 	}
-	// }
-
+	
 	switch (action.action){
 
 		case 'mute':
