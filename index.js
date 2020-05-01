@@ -21,11 +21,41 @@ function instance(system, id, config) {
 	// super-constructor
 	instance_skel.apply(this, arguments);
 
+	self.addUpgradeScript(function(config, actions, releaseActions, feedbacks) {
+		var changed = false;
+
+		function upgradePass(actions, changed) {
+			for (var k in actions) {
+				var action = actions[k];
+
+				if (['mute','mMute','usbMute'].includes(action.action)) {
+					if (action.options.mute === null) {
+						action.options.mute = '0';
+						changed = true;
+					}
+				}
+				if ('mute_grp' == action.action) {
+					if (action.options.mute === null) {
+						action.options.mute = '1';
+						changed = true;
+					}
+				}
+			}
+			return changed;
+		}
+
+		changed = upgradePass(actions, changed);
+		changed = upgradePass(releaseActions, changed);
+
+		return changed;
+	});
+
 	// each instance needs a separate local port
 	id.split('').forEach(function (c) {
 		po += c.charCodeAt(0);
 	});
 	self.port_offset = po;
+
 	self.init_actions(); // export actions
 	self.init_variables();
 	self.init_feedbacks();
@@ -323,6 +353,7 @@ instance.prototype.init_actions = function(system) {
 					type:     'dropdown',
 					label:    'Mute / Unmute',
 					id:       'mute',
+					default:  '0',
 					choices:  [ { id: '0', label: 'Mute' }, { id: '1', label: 'Unmute' } ]
 				},
 			]
@@ -335,6 +366,7 @@ instance.prototype.init_actions = function(system) {
 					type:     'dropdown',
 					label:    'Mute / Unmute',
 					id:       'mute',
+					default:  '0',
 					choices:  [ { id: '0', label: 'Mute' }, { id: '1', label: 'Unmute' } ]
 				},
 			]
@@ -347,6 +379,7 @@ instance.prototype.init_actions = function(system) {
 					type:     'dropdown',
 					label:    'Mute / Unmute',
 					id:       'mute',
+					default:  '0',
 					choices:  [ { id: '0', label: 'Mute' }, { id: '1', label: 'Unmute' } ]
 				},
 			]
@@ -558,6 +591,7 @@ instance.prototype.init_actions = function(system) {
 					type:    'dropdown',
 					label:   'Mute / Unmute',
 					id:      'mute',
+					default: '1',
 					choices: [ { id: '1', label: 'Mute' }, { id: '0', label: 'Unmute' } ]
 				}
 			]
@@ -599,7 +633,6 @@ instance.prototype.action = function(action) {
 	var opt = action.options;
 	var nVal;
 	var arg = {};
-
 
 	switch (action.action){
 
