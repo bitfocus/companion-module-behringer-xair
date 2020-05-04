@@ -1,0 +1,83 @@
+[
+	{
+		"id": "ch",
+		"digits": 2,
+		"min": 1,
+		"max": 16,
+		"description": "Channel",
+		"actID": "mute",
+		"hasMix": true,
+		"hasOn": true
+	},
+	{
+		"id": "rtn/aux",
+		"digits": 0,
+		"min": 0,
+		"max": 0,
+		"description": "USB/Aux In",
+		"actID": "usbMute",
+		"hasMix": true,
+		"hasOn": true
+	},
+	{
+		"id": "rtn",
+		"digits": 1,
+		"min": 1,
+		"max": 4,
+		"description": "FX Return",
+		"actID": "mute",
+		"hasMix": true,
+		"hasOn": true
+	},
+	{
+		"id": "bus",
+		"digits": 1,
+		"min": 1,
+		"max": 6,
+		"description": "Mix Bus",
+		"actID": "mute",
+		"hasMix": true,
+		"hasOn": true
+	},
+	{
+		"id": "fxsend",
+		"digits": 1,
+		"min": 1,
+		"max": 4,
+		"actID": "mute",
+		"description": "FX Send",
+		"hasMix": true,
+		"hasOn": true
+	},
+	{
+		"id": "lr",
+		"digits": 0,
+		"min": 0,
+		"max": 0,
+		"actID": "mMute",
+		"description": "Main LR",
+		"hasMix": true,
+		"hasOn": true
+	},
+	{
+		"id": "dca",
+		"digits": 1,
+		"min": 1,
+		"max": 4,
+		"description": "DCA",
+		"actID": "mute",
+		"hasMix": false,
+		"hasOn": true
+	},
+
+	{
+		"id": "config/mute",
+		"digits": 1,
+		"min": 1,
+		"max": 4,
+		"description": "Mute Group",
+		"actID": "mute_grp",
+		"hasMix": false,
+		"hasOn": false
+	}
+]
