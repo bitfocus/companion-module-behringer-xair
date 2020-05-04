@@ -121,7 +121,7 @@ instance.prototype.init_mutes = function () {
 	var muteChoice;
 
 	function channelRange(first, last, digits) {
-		return ('00' +	first).slice(-digits) + "-" + ('00' + last).slice(-digits)
+		return ('00' +	first).slice(-digits) + "-" + ('00' + last).slice(-digits);
 	}
 	for (i=0; i < stripdef.length; i++) {
 		fbID = stripdef[i].id;
