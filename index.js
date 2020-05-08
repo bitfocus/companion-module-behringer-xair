@@ -128,7 +128,7 @@ instance.prototype.init_mutes = function () {
 		chID = '/' + fbID;
 		actID = stripdef[i].actID;
 		d = stripdef[i].digits;
-		muteChoice = [ stripdef[i].hasOn ? '0' : '1', stripdef[i].hasOn ? '1' : '0'];
+		muteChoice = [ stripdef[i].hasOn ? '0' : '1', stripdef[i].hasOn ? '1' : '0', '2'];
 		sfx = (stripdef[i].hasMix ? '/mix' : '') + (stripdef[i].hasOn ? '/on' : '');
 
 		if (actID in muteActions) {
@@ -192,7 +192,8 @@ instance.prototype.init_mutes = function () {
 				default: muteChoice[0],
 				choices: [
 					{id: muteChoice[0], label: 'Mute'},
-					{id: muteChoice[1], label: 'Unmute'}
+					{id: muteChoice[1], label: 'Unmute'},
+					{id: '2', 			label: 'Toggle'}
 					]
 				}
 			);
@@ -790,10 +791,6 @@ instance.prototype.action = function(action) {
 	switch (action.action){
 
 		case 'mute':
-			arg = {
-				type: "i",
-				value: parseInt(opt.mute)
-			};
 			if (opt.type == '/ch/') {
 				if (opt.num <= 9){
 					nVal = ('0' + parseInt(opt.num)).substr(-2);
@@ -810,22 +807,26 @@ instance.prototype.action = function(action) {
 			} else {
 				cmd = opt.type + nVal + '/mix/on';
 			}
+			arg = {
+				type: "i",
+				value: 2==parseInt(opt.mute) ? 1-self.mute[cmd].isOn : parseInt(opt.mute)
+			};
 		break;
 
 		case 'mMute':
+			cmd = '/lr/mix/on';
 			arg = {
 				type: "i",
-				value: parseInt(opt.mute)
+				value: 2==parseInt(opt.mute) ? 1-self.mute[cmd].isOn : parseInt(opt.mute)
 			};
-			cmd = '/lr/mix/on';
 		break;
 
 		case 'usbMute':
+			cmd = '/rtn/aux/mix/on';
 			arg = {
 				type: "i",
-				value: parseInt(opt.mute)
+				value: 2==parseInt(opt.mute) ? 1-self.mute[cmd].isOn : parseInt(opt.mute)
 			};
-			cmd = '/rtn/aux/mix/on';
 		break;
 
 		case 'fad':
@@ -949,11 +950,11 @@ instance.prototype.action = function(action) {
 		break;
 
 		case 'mute_grp':
+			cmd = '/config/mute/'+ opt.mute_grp;
 			arg = {
 				type: "i",
-				value: parseInt(opt.mute)
+				value: 2==parseInt(opt.mute) ? 1-self.mute[cmd].isOn : parseInt(opt.mute)
 			};
-			cmd = '/config/mute/'+ opt.mute_grp;
 		break;
 
 		case 'load_snap':

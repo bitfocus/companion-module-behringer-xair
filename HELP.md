@@ -18,6 +18,7 @@ Mute Group | Turns the selected mute group on or off
 Load Console Snapshot | Loads the given Snapshot from the consoles internal Snapshot list 1-64
 Tape Operation | Stop,Play,PlayPause,Record,RecordPause,Fast Forward,Rewind of the tape Deck
 Bus sends | Bus sends for channels
+**Note:** All mute actions also have a Toggle option that inverts the current state of the board channel
 
 ## Dynamic Variables
 Variable | Description
