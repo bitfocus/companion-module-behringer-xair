@@ -1,5 +1,6 @@
 var instance_skel = require('../../instance_skel');
 var OSC = require('osc');
+var stripdef = require('./stripdef.json');
 var debug;
 var log;
 
@@ -17,6 +18,14 @@ function instance(system, id, config) {
 		model: '',
 		fwVersion: ''
 	};
+
+	// mixer mute state
+	self.mute = {};
+	// mute id from mixer address
+	self.fbToMute = {};
+	self.muteActions = {};
+	self.muteFeedbacks = {};
+	self.needMutes = true;
 
 	// super-constructor
 	instance_skel.apply(this, arguments);
@@ -56,6 +65,8 @@ function instance(system, id, config) {
 	});
 	self.port_offset = po;
 
+	self.debug = debug;
+	self.init_mutes();
 	self.init_actions(); // export actions
 	self.init_variables();
 	self.init_feedbacks();
@@ -71,11 +82,12 @@ instance.prototype.updateConfig = function(config) {
 
 instance.prototype.init = function() {
 	var self = this;
-	self.status(self.STATE_OK); // status ok!
+	self.status(self.STATUS_OK); // status ok!
 	debug = self.debug;
 	log = self.log;
 	self.init_osc();
 	self.init_variables();
+	debug(Object.keys(self.mute).length + " mutes addresses loaded");
 };
 
 /**
@@ -84,8 +96,218 @@ instance.prototype.init = function() {
 instance.prototype.pulse = function () {
 	var self = this;
 	self.sendOSC("/xremote", []);
+	// any leftover mutes needed?
+	if (self.needMutes) {
+		self.pollMutes();
+	}
 };
 
+instance.prototype.init_mutes = function () {
+	var self = this;
+	var i;
+	var c;
+	var d;
+	var l;
+	var sfx;
+	var chID;
+	var muteID;
+	var actID;
+	var fbID;
+	var fbDescription;
+
+	var mute = {};
+	var muteActions = {};
+	var muteFeedbacks = {};
+	var muteChoice;
+
+	function channelRange(first, last, digits) {
+		return ('00' +	first).slice(-digits) + "-" + ('00' + last).slice(-digits);
+	}
+	for (i=0; i < stripdef.length; i++) {
+		fbID = stripdef[i].id;
+		chID = '/' + fbID;
+		actID = stripdef[i].actID;
+		d = stripdef[i].digits;
+		muteChoice = [ stripdef[i].hasOn ? '0' : '1', stripdef[i].hasOn ? '1' : '0', '2'];
+		sfx = (stripdef[i].hasMix ? '/mix' : '') + (stripdef[i].hasOn ? '/on' : '');
+
+		if (actID in muteActions) {
+			muteActions[actID].options[0].choices.push({
+				id:    chID + '/',
+				label: stripdef[i].description + " " + channelRange(stripdef[i].min, stripdef[i].max, d)
+			});
+			l = muteActions[actID].options[1].label + ", " + stripdef[i].description;
+			muteActions[actID].options[1].label = l;
+		} else {
+			if (stripdef[i].hasOn == true) {
+				if (d>0) {					// one of the channel mutes
+					muteActions[actID] = {
+						label: "Mute " + stripdef[i].description,
+						options: [
+							{
+								type:	'dropdown',
+								label:	'Type',
+								id:		'type',
+								choices: [ {
+									id: 	chID + '/',
+									label: stripdef[i].description + " " + channelRange(stripdef[i].min, stripdef[i].max, d)
+								} ],
+								default: chID + '/'
+							},
+							{
+								type:	'textinput',
+								label:	"Which " + stripdef[i].description,
+								id:		'num',
+								default:'1',
+								regex:	self.REGEX_NUMBER
+							}
+						]
+					};
+				} else {						// Main LR, Aux/USB
+					muteActions[actID] = {
+						label: "Mute " + stripdef[i].description,
+						options: []
+					};
+				}
+			} else {							// Mute Group
+				muteActions[actID] = {
+					label: stripdef[i].description,
+					options: [
+						{
+							type:	'textinput',
+							label:	stripdef[i].description + " " + channelRange(stripdef[i].min, stripdef[i].max, d),
+							id:		'mute_grp',
+							default:'1',
+							regex:	self.REGEX_NUMBER
+						}
+					]
+				};
+			}
+
+
+			muteActions[actID].options.push( {
+				type:	'dropdown',
+				label:	'Mute / Unmute',
+				id:		'mute',
+				default: muteChoice[0],
+				choices: [
+					{id: muteChoice[0], label: 'Mute'},
+					{id: muteChoice[1], label: 'Unmute'},
+					{id: '2', 			label: 'Toggle'}
+					]
+				}
+			);
+			muteActions[actID].order = i;
+		}
+		if (d == 0) {
+			muteID = chID + sfx;
+			mute[muteID] = {
+				isOn: false,
+				hasOn: stripdef[i].hasOn,
+				valid: false,
+				feedback: fbID,
+				polled: 0
+			};
+			self.fbToMute[fbID] = muteID;
+		} else {
+			for (c = stripdef[i].min; c <= stripdef[i].max; c++) {
+				muteID = chID + '/' + ('00' + c).slice(-d) + sfx;
+				mute[muteID] = {
+					isOn: false,
+					hasOn: stripdef[i].hasOn,
+					valid: false,
+					feedback: fbID,
+					polled: 0
+				};
+				self.fbToMute[fbID + '_' + c] = muteID;
+			}
+		}
+		fbDescription = stripdef[i].description + " " + (stripdef[i].hasOn ? "Muted" : "On");
+		muteFeedbacks[fbID] = {
+			label: 		 "Color when " + fbDescription,
+			description: "Set button colors when " + fbDescription,
+			options: [
+				{
+					type: 'colorpicker',
+					label: 'Foreground color',
+					id: 'fg',
+					default: '16777215'
+				},
+				{
+					type: 'colorpicker',
+					label: 'Background color',
+					id: 'bg',
+					default: self.rgb(128,0, 0)
+				},
+			],
+			callback: function(feedback, bank) {
+				var theChannel = feedback.options.theChannel;
+				if (theChannel) {
+					if (self.mute[self.fbToMute[feedback.type + "_" + theChannel]].isOn !=
+					    self.mute[self.fbToMute[feedback.type + "_" + theChannel]].hasOn) {
+						return { color: feedback.options.fg, bgcolor: feedback.options.bg };
+					}
+				} else if ( self.fbToMute[feedback.type] ) {
+					if (self.mute[self.fbToMute[feedback.type]].isOn !=
+						self.mute[self.fbToMute[feedback.type]].hasOn) {
+						return { color: feedback.options.fg, bgcolor: feedback.options.bg };
+					}
+				}
+			}
+		};
+		if (d>0) {
+			muteFeedbacks[fbID].options.push( {
+				type: 'number',
+				label: stripdef[i].description + ' number',
+				id: 'theChannel',
+				default: 1,
+				min: stripdef[i].min,
+				max: stripdef[i].max,
+				range: false,
+				required: true
+			} );
+		}
+	}
+	self.mute = mute;
+	self.muteActions = muteActions;
+	self.muteFeedbacks = muteFeedbacks;
+};
+
+instance.prototype.pollMutes = function () {
+	var self = this;
+	var stillNeed = false;
+	var counter = 0;
+	var timeNow = Date.now();
+	var timeOut = timeNow - 50;
+
+	for (var id in self.mute) {
+		if (!self.mute[id].valid && (self.mute[id].polled < timeOut)) {
+			self.sendOSC(id);
+			self.debug("sending " + id);
+			self.mute[id].polled = timeNow;
+			stillNeed = true;
+			counter++;
+			if (counter > 5) {
+				break;
+			}
+		}
+	}
+	if (!stillNeed) {
+		self.status(self.STATUS_OK,"Mutes loaded");
+	}
+	self.needMutes = stillNeed;
+};
+
+instance.prototype.firstPoll = function () {
+	self = this;
+	var id;
+
+	self.sendOSC('/xinfo',[]);
+	self.sendOSC('/-snap/name',[]);
+	self.sendOSC('/-snap/index',[]);
+	self.pollMutes();
+	self.pulse();
+};
 
 instance.prototype.init_osc = function() {
 	var self = this;
@@ -109,7 +331,15 @@ instance.prototype.init_osc = function() {
 			var node = message.address;
 
 			// debug("received ", message, "from", info);
-			if (node.match(/^\/xinfo$/)) {
+			if (node in self.mute) {
+				self.mute[node].isOn = (args[0].value == 0 ? false : true);
+				self.mute[node].valid = true;
+				if (self.needMutes) {
+					self.pollMutes();
+				}
+				self.checkFeedbacks(self.mute[node].feedback);
+				debug(message);
+			} else if (node.match(/^\/xinfo$/)) {
 				self.myMixer.name = args[1].value;
 				self.myMixer.model = args[2].value;
 				self.myMixer.fw = args[3].value;
@@ -130,11 +360,8 @@ instance.prototype.init_osc = function() {
 		});
 
 		self.oscPort.on('ready', function() {
-			self.status(self.STATUS_OK);
-			self.sendOSC("/xinfo",[]);
-			self.sendOSC('/-snap/name',[]);
-			self.sendOSC('/-snap/index',[]);
-			self.pulse();
+			self.status(self.STATUS_WARNING,"Loading mutes");
+			self.firstPoll();
 			self.heartbeat = setInterval( function () { self.pulse(); },9500);
 		});
 
@@ -194,8 +421,8 @@ instance.prototype.init_feedbacks = function() {
 
 	var feedbacks = {
 		snap_color: {
-			label: 'Color when Current Snapshot',
-			description: 'Set Button colors when a Snapshot is loaded',
+			label: 'Color on Current Snapshot',
+			description: 'Set Button colors when this Snapshot is loaded',
 			options: [
 				{
 					type: 'colorpicker',
@@ -227,6 +454,7 @@ instance.prototype.init_feedbacks = function() {
 			}
 		}
 	};
+	Object.assign(feedbacks,this.muteFeedbacks);
 	this.setFeedbackDefinitions(feedbacks);
 };
 
@@ -324,66 +552,9 @@ instance.prototype.tape_func = [
 
 instance.prototype.init_actions = function(system) {
 	var self = this;
-	self.system.emit('instance_actions', self.id, {
+	var newActions = {};
 
-		'mute':     {
-			label:      'Set mute',
-			options: [
-				{
-					type:     'dropdown',
-					label:    'Type',
-					id:       'type',
-					choices:  [
-						{ id: '/ch/',      label: 'Channel 01-16' },
-						{ id: '/rtn/',     label: 'Fx Return 1-4' },
-						{ id: '/fxsend/',  label: 'Fx Send 1-4'  },
-						{ id: '/bus/',     label: 'Bus 1-6'  },
-						{ id: '/dca/',	   label: 'DCA 1-4' }
-					],
-					default: '/ch/'
-				},
-				{
-					type:     'textinput',
-					label:    'Channel, Fx Return, Fx Send, Bus, or DCA Number',
-					id:       'num',
-					default:  '1',
-					regex:    self.REGEX_NUMBER
-				},
-				{
-					type:     'dropdown',
-					label:    'Mute / Unmute',
-					id:       'mute',
-					default:  '0',
-					choices:  [ { id: '0', label: 'Mute' }, { id: '1', label: 'Unmute' } ]
-				},
-			]
-		},
-
-		'mMute':     {
-			label:        'Set Main mute',
-			options: [
-				{
-					type:     'dropdown',
-					label:    'Mute / Unmute',
-					id:       'mute',
-					default:  '0',
-					choices:  [ { id: '0', label: 'Mute' }, { id: '1', label: 'Unmute' } ]
-				},
-			]
-		},
-
-		'usbMute':     {
-			label:        'Set USB mute',
-			options: [
-				{
-					type:     'dropdown',
-					label:    'Mute / Unmute',
-					id:       'mute',
-					default:  '0',
-					choices:  [ { id: '0', label: 'Mute' }, { id: '1', label: 'Unmute' } ]
-				},
-			]
-		},
+	Object.assign(newActions, self.muteActions, {
 
 		'fad':     {
 			label:        'Set fader level',
@@ -577,26 +748,6 @@ instance.prototype.init_actions = function(system) {
 			]
 		},
 
-		'mute_grp':     {
-			label:     'Mute Group ON/OFF',
-			options: [
-				{
-					type:    'textinput',
-					label:   'Mute Group Number (1-4)',
-					id:      'mute_grp',
-					default: '1',
-					regex: self.REGEX_NUMBER
-				},
-				{
-					type:    'dropdown',
-					label:   'Mute / Unmute',
-					id:      'mute',
-					default: '1',
-					choices: [ { id: '1', label: 'Mute' }, { id: '0', label: 'Unmute' } ]
-				}
-			]
-		},
-
 		'load_snap':     {
 			label:     'Load Console Snapshot',
 			options: [
@@ -623,8 +774,11 @@ instance.prototype.init_actions = function(system) {
 				}
 			]
 		}
-
 	});
+
+
+
+	self.system.emit('instance_actions', self.id, newActions);
 };
 
 instance.prototype.action = function(action) {
@@ -637,10 +791,6 @@ instance.prototype.action = function(action) {
 	switch (action.action){
 
 		case 'mute':
-			arg = {
-				type: "i",
-				value: parseInt(opt.mute)
-			};
 			if (opt.type == '/ch/') {
 				if (opt.num <= 9){
 					nVal = ('0' + parseInt(opt.num)).substr(-2);
@@ -657,22 +807,26 @@ instance.prototype.action = function(action) {
 			} else {
 				cmd = opt.type + nVal + '/mix/on';
 			}
+			arg = {
+				type: "i",
+				value: 2==parseInt(opt.mute) ? 1-self.mute[cmd].isOn : parseInt(opt.mute)
+			};
 		break;
 
 		case 'mMute':
+			cmd = '/lr/mix/on';
 			arg = {
 				type: "i",
-				value: parseInt(opt.mute)
+				value: 2==parseInt(opt.mute) ? 1-self.mute[cmd].isOn : parseInt(opt.mute)
 			};
-			cmd = '/lr/mix/on';
 		break;
 
 		case 'usbMute':
+			cmd = '/rtn/aux/mix/on';
 			arg = {
 				type: "i",
-				value: parseInt(opt.mute)
+				value: 2==parseInt(opt.mute) ? 1-self.mute[cmd].isOn : parseInt(opt.mute)
 			};
-			cmd = '/rtn/aux/mix/on';
 		break;
 
 		case 'fad':
@@ -796,11 +950,11 @@ instance.prototype.action = function(action) {
 		break;
 
 		case 'mute_grp':
+			cmd = '/config/mute/'+ opt.mute_grp;
 			arg = {
 				type: "i",
-				value: parseInt(opt.mute)
+				value: 2==parseInt(opt.mute) ? 1-self.mute[cmd].isOn : parseInt(opt.mute)
 			};
-			cmd = '/config/mute/'+ opt.mute_grp;
 		break;
 
 		case 'load_snap':

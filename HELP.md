@@ -18,6 +18,7 @@ Mute Group | Turns the selected mute group on or off
 Load Console Snapshot | Loads the given Snapshot from the consoles internal Snapshot list 1-64
 Tape Operation | Stop,Play,PlayPause,Record,RecordPause,Fast Forward,Rewind of the tape Deck
 Bus sends | Bus sends for channels
+**Note:** All mute actions also have a Toggle option that inverts the current state of the board channel
 
 ## Dynamic Variables
 Variable | Description
@@ -29,6 +30,15 @@ Variable | Description
 **$(INSTANCENAME:s_index)** | Current Snapshot Number
 
 ## Feedback
-**Color when Current Snapshot**: Sets the button color if the Selected snapshot is loaded
+Variable | Description
+-----------------|---------------
+**Color when Current Snapshot** | Sets the button color if the Selected snapshot is loaded
+**Color when Channel muted** | Sets the button color if the selected channel is muted (Channel/Bus/DCA/FX send/FX return)
+**Color when Main LR muted** | Sets the button color if the Main LR is muted
+**Color when USB/Aux in muted** | Sets the button color if the USB/Aux in is muted
+**Color when Mute Group on** | Sets the button color if the selected Mute Group is on
+
+## Notes
+Channel ranges are maximums (compatible with the X18). If you have an X12 or X16 invalid channels are ignored.
 
 for additional actions please raise a feature request at [github](https://github.com/bitfocus/companion)
