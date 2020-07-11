@@ -78,6 +78,10 @@ instance.prototype.updateConfig = function(config) {
 	var self = this;
 
 	self.config = config;
+	self.init_osc();
+	self.init_variables();
+	self.init_feedbacks();
+
 };
 
 instance.prototype.init = function() {
@@ -382,7 +386,6 @@ instance.prototype.init_osc = function() {
 		});
 
 		self.oscPort.open();
-
 	}
 };
 
@@ -412,10 +415,15 @@ instance.prototype.init_variables = function() {
 			name:  's_index'
 		}
 	];
-	this.setVariableDefinitions(variables);
+	var i = 0;
+	while (i < variables.length) {
+		self.setVariable(variables[i].name);
+		i++;
+	}
+	self.setVariableDefinitions(variables);
 };
 
-// define instance variables
+// define instance feedbacks
 instance.prototype.init_feedbacks = function() {
 	var self = this;
 
