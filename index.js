@@ -160,6 +160,10 @@ instance.prototype.init_stats = function () {
 		return s.split('/').join('_');
 	}
 
+	function sendLabel(d, min, max) {
+		return d + (min == 0 ? '' : " " + min + "-" + max);
+	}
+
 	for (i in stripDef) {
 		fbID = stripDef[i].id;
 		chID = '/' + fbID;
@@ -353,13 +357,13 @@ instance.prototype.init_stats = function () {
 			if (sendID in sendActions) {
 				sendActions[sendID].options[0].choices.push({
 					id:    chID + '/',
-					label: stripDef[i].description + " " + stripDef[i].min + "-" + stripDef[i].max
+					label: sendLabel(stripDef[i].description, stripDef[i].min, stripDef[i].max)
 				});
 				l = sendActions[sendID].options[1].label + ", " + stripDef[i].description;
 				sendActions[sendID].options[1].label = l;
 				sendActions[sendID + '_a'].options[0].choices.push({
 					id:    chID + '/',
-					label: stripDef[i].description + " " + stripDef[i].min + "-" + stripDef[i].max
+					label: sendLabel(stripDef[i].description, stripDef[i].min, stripDef[i].max)
 				});
 				l = sendActions[sendID + '_a'].options[1].label + ", " + stripDef[i].description;
 				sendActions[sendID + '_a'].options[1].label = l;
@@ -373,7 +377,7 @@ instance.prototype.init_stats = function () {
 							id:		'type',
 							choices: [ {
 								id: 	chID + '/',
-								label: stripDef[i].description + " "  + stripDef[i].min + "-" + stripDef[i].max
+								label: sendLabel(stripDef[i].description, stripDef[i].min, stripDef[i].max)
 							} ],
 							default: chID + '/'
 						},
@@ -412,7 +416,8 @@ instance.prototype.init_stats = function () {
 							id:		'type',
 							choices: [ {
 								id: 	chID + '/',
-								label: stripDef[i].description + " "  + stripDef[i].min + "-" + stripDef[i].max
+								label: sendLabel(stripDef[i].description, stripDef[i].min, stripDef[i].max)
+
 							} ],
 							default: chID + '/'
 						},
