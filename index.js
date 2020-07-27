@@ -1,6 +1,8 @@
+//'use strict';
 var instance_skel = require('../../instance_skel');
 var OSC = require('osc');
-var stripdef = require('./stripdef.json');
+var rgb = require('../../image').rgb;
+var stripDef = require('./stripdef.json');
 var debug;
 var log;
 
@@ -19,16 +21,22 @@ function instance(system, id, config) {
 		fwVersion: ''
 	};
 
-	// mixer mute state
-	self.mute = {};
-	// mute id from mixer address
-	self.fbToMute = {};
-	self.muteActions = {};
+	// mixer state
+	self.xStat = {};
+	// stat id from mixer address
+	self.fbToStat = {};
+	self.actionDefs = {};
 	self.muteFeedbacks = {};
-	self.needMutes = true;
+	self.colorFeedbacks = {};
+	self.variableDefs = [];
+	self.needStats = true;
 
 	// super-constructor
 	instance_skel.apply(this, arguments);
+
+	if (process.env.DEVELOPER) {
+		self.config._configIdx = -1;
+	}
 
 	self.addUpgradeScript(function(config, actions, releaseActions, feedbacks) {
 		var changed = false;
@@ -56,6 +64,7 @@ function instance(system, id, config) {
 		changed = upgradePass(actions, changed);
 		changed = upgradePass(releaseActions, changed);
 
+
 		return changed;
 	});
 
@@ -66,7 +75,7 @@ function instance(system, id, config) {
 	self.port_offset = po;
 
 	self.debug = debug;
-	self.init_mutes();
+	self.init_stats();
 	self.init_actions(); // export actions
 	self.init_variables();
 	self.init_feedbacks();
@@ -91,7 +100,7 @@ instance.prototype.init = function() {
 	log = self.log;
 	self.init_osc();
 	self.init_variables();
-	debug(Object.keys(self.mute).length + " mutes addresses loaded");
+	debug(Object.keys(self.xStat).length + " status addresses loaded");
 };
 
 /**
@@ -100,53 +109,88 @@ instance.prototype.init = function() {
 instance.prototype.pulse = function () {
 	var self = this;
 	self.sendOSC("/xremote", []);
-	// any leftover mutes needed?
-	if (self.needMutes) {
-		self.pollMutes();
+	// any leftover status needed?
+	if (self.needStats) {
+		self.pollStats();
 	}
 };
 
-instance.prototype.init_mutes = function () {
+instance.prototype.init_stats = function () {
 	var self = this;
-	var i;
-	var c;
-	var d;
-	var l;
-	var sfx;
+
+	var i, b, c, d, l;
+
+	var muteSfx;
+	var labelSfx;
+	var fadeSfx;
+	var defaultLabel;
 	var chID;
+	var theID;
 	var muteID;
-	var actID;
+	var fadeID;
+	var sendID;
 	var fbID;
+	var fID;
+	var bOrF;
+	var sChan;
 	var fbDescription;
 
-	var mute = {};
+	var stat = {};
 	var muteActions = {};
+	var fadeActions = {};
+	var sendActions = {};
 	var muteFeedbacks = {};
+	var colorFeedbacks = {};
+	var defVariables = [];
 	var muteChoice;
 
-	function channelRange(first, last, digits) {
-		return ('00' +	first).slice(-digits) + "-" + ('00' + last).slice(-digits);
-	}
-	for (i=0; i < stripdef.length; i++) {
-		fbID = stripdef[i].id;
-		chID = '/' + fbID;
-		actID = stripdef[i].actID;
-		d = stripdef[i].digits;
-		muteChoice = [ stripdef[i].hasOn ? '0' : '1', stripdef[i].hasOn ? '1' : '0', '2'];
-		sfx = (stripdef[i].hasMix ? '/mix' : '') + (stripdef[i].hasOn ? '/on' : '');
+	var busOpts = [];
 
-		if (actID in muteActions) {
-			muteActions[actID].options[0].choices.push({
+	for (b=1; b<11; b++) {
+		busOpts.push({
+			label: (b<7 ? " Bus " + b : " FX " + (b - 6) ), id: b
+		});
+	}
+
+	function capFirst(string) {
+		return string.charAt(0).toUpperCase() + string.slice(1);
+	}
+
+	function unslash(s) {
+		return s.split('/').join('_');
+	}
+
+	function sendLabel(d, min, max) {
+		return d + (min == 0 ? '' : " " + min + "-" + max);
+	}
+
+	for (i in stripDef) {
+		fbID = stripDef[i].id;
+		chID = '/' + fbID;
+		muteID = stripDef[i].muteID;
+		fadeID = stripDef[i].fadeID;
+		d = stripDef[i].digits;
+		muteChoice = [ stripDef[i].hasOn ? '0' : '1', stripDef[i].hasOn ? '1' : '0', '2'];
+		muteSfx = (stripDef[i].hasMix ? '/mix' : '') + (stripDef[i].hasOn ? '/on' : '');
+		fadeSfx = (stripDef[i].hasMix ? '/mix' : '') + (stripDef[i].hasOn ? '/fader' : '');
+		labelSfx = (stripDef[i].hasOn ? '/config' : '');
+		defaultLabel = stripDef[i].label;
+		if (defaultLabel != '' && d > 0 ){
+			defaultLabel = defaultLabel + ' ';
+		}
+
+		if (muteID in muteActions) {
+			muteActions[muteID].options[0].choices.push({
 				id:    chID + '/',
-				label: stripdef[i].description + " " + channelRange(stripdef[i].min, stripdef[i].max, d)
+				label: stripDef[i].description + " " + stripDef[i].min + "-" + stripDef[i].max
 			});
-			l = muteActions[actID].options[1].label + ", " + stripdef[i].description;
-			muteActions[actID].options[1].label = l;
+			l = muteActions[muteID].options[1].label + ", " + stripDef[i].description;
+			muteActions[muteID].options[1].label = l;
 		} else {
-			if (stripdef[i].hasOn == true) {
+			if (stripDef[i].hasOn == true) {
 				if (d>0) {					// one of the channel mutes
-					muteActions[actID] = {
-						label: "Mute " + stripdef[i].description,
+					muteActions[muteID] = {
+						label: "Mute " + stripDef[i].description,
 						options: [
 							{
 								type:	'dropdown',
@@ -154,32 +198,35 @@ instance.prototype.init_mutes = function () {
 								id:		'type',
 								choices: [ {
 									id: 	chID + '/',
-									label: stripdef[i].description + " " + channelRange(stripdef[i].min, stripdef[i].max, d)
+									label: stripDef[i].description + " "  + stripDef[i].min + "-" + stripDef[i].max
 								} ],
 								default: chID + '/'
 							},
 							{
-								type:	'textinput',
-								label:	"Which " + stripdef[i].description,
-								id:		'num',
-								default:'1',
-								regex:	self.REGEX_NUMBER
+								type: 'number',
+								label: stripDef[i].description,
+								id: 'num',
+								default: 1,
+								min: stripDef[i].min,
+								max: stripDef[i].max,
+								range: false,
+								required: true
 							}
 						]
 					};
 				} else {						// Main LR, Aux/USB
-					muteActions[actID] = {
-						label: "Mute " + stripdef[i].description,
+					muteActions[muteID] = {
+						label: "Mute " + stripDef[i].description,
 						options: []
 					};
 				}
 			} else {							// Mute Group
-				muteActions[actID] = {
-					label: stripdef[i].description,
+				muteActions[muteID] = {
+					label: stripDef[i].description,
 					options: [
 						{
 							type:	'textinput',
-							label:	stripdef[i].description + " " + channelRange(stripdef[i].min, stripdef[i].max, d),
+							label:	stripDef[i].description + " " + stripDef[i].min + "-" + stripDef[i].max,
 							id:		'mute_grp',
 							default:'1',
 							regex:	self.REGEX_NUMBER
@@ -188,12 +235,11 @@ instance.prototype.init_mutes = function () {
 				};
 			}
 
-
-			muteActions[actID].options.push( {
+			muteActions[muteID].options.push( {
 				type:	'dropdown',
 				label:	'Mute / Unmute',
 				id:		'mute',
-				default: muteChoice[0],
+				default: '2',
 				choices: [
 					{id: muteChoice[0], label: 'Mute'},
 					{id: muteChoice[1], label: 'Unmute'},
@@ -201,32 +247,348 @@ instance.prototype.init_mutes = function () {
 					]
 				}
 			);
-			muteActions[actID].order = i;
+			muteActions[muteID].order = i;
 		}
-		if (d == 0) {
-			muteID = chID + sfx;
-			mute[muteID] = {
-				isOn: false,
-				hasOn: stripdef[i].hasOn,
-				valid: false,
-				feedback: fbID,
-				polled: 0
-			};
-			self.fbToMute[fbID] = muteID;
+
+		if (fadeID in fadeActions) {
+			fadeActions[fadeID].options[0].choices.push({
+				id:    chID + '/',
+				label: stripDef[i].description + " " + stripDef[i].min + "-" + stripDef[i].max
+			});
+			l = fadeActions[fadeID].options[1].label + ", " + stripDef[i].description;
+			fadeActions[fadeID].options[1].label = l;
+			fadeActions[fadeID + '_a'].options[0].choices.push({
+				id:    chID + '/',
+				label: stripDef[i].description + " " + stripDef[i].min + "-" + stripDef[i].max
+			});
+			l = fadeActions[fadeID + '_a'].options[1].label + ", " + stripDef[i].description;
+			fadeActions[fadeID + '_a'].options[1].label = l;
 		} else {
-			for (c = stripdef[i].min; c <= stripdef[i].max; c++) {
-				muteID = chID + '/' + ('00' + c).slice(-d) + sfx;
-				mute[muteID] = {
-					isOn: false,
-					hasOn: stripdef[i].hasOn,
-					valid: false,
-					feedback: fbID,
-					polled: 0
-				};
-				self.fbToMute[fbID + '_' + c] = muteID;
+			if (stripDef[i].hasOn == true) {
+				if (d>0) {					// one of the channel strips
+					fadeActions[fadeID] = {
+						label: "Fader Set",
+						options: [
+							{
+								type:	'dropdown',
+								label:	'Type',
+								id:		'type',
+								choices: [ {
+									id: 	chID + '/',
+									label: stripDef[i].description + " "  + stripDef[i].min + "-" + stripDef[i].max
+								} ],
+								default: chID + '/'
+							},
+							{
+								type: 'number',
+								label: stripDef[i].description,
+								id: 'num',
+								default: 1,
+								min: stripDef[i].min,
+								max: stripDef[i].max,
+								range: false,
+								required: true
+							}
+						]
+					};
+					fadeActions[fadeID+'_a'] = {
+						label: "Fader Adjust",
+						options: [
+							{
+								type:	'dropdown',
+								label:	'Type',
+								id:		'type',
+								choices: [ {
+									id: 	chID + '/',
+									label: stripDef[i].description + " "  + stripDef[i].min + "-" + stripDef[i].max
+								} ],
+								default: chID + '/'
+							},
+							{
+								type: 'number',
+								label: stripDef[i].description,
+								id: 'num',
+								default: 1,
+								min: stripDef[i].min,
+								max: stripDef[i].max,
+								range: false,
+								required: true
+							}
+						]
+					};
+				} else {						// Main LR, Aux/USB
+					fadeActions[fadeID] = {
+						label: stripDef[i].description + " Fader Set",
+						options: []
+					};
+					fadeActions[fadeID+'_a'] = {
+						label: stripDef[i].description + " Fader Adjust",
+						options: []
+					};
+				}	// else mute group (no fader)
+			}
+
+			if (stripDef[i].hasOn) {
+				fadeActions[fadeID].options.push( {
+					type:	'dropdown',
+					label:	'Fader Level',
+					id:		'fad',
+					choices: self.fader_val
+				});
+
+				fadeActions[fadeID].order = i;
+
+				fadeActions[fadeID + '_a'].options.push( {
+					type:	 'number',
+					tooltip:	 "Move fader +/- percent.\nFader Percent:\n0 = -oo, 75 = 0db, 100 = +10db",
+					label:	 'Adjust',
+					id:		 'ticks',
+					min:	 -100,
+					max:	 100,
+					default: 1
+				});
+
+				fadeActions[fadeID + '_a'].order = i;
 			}
 		}
-		fbDescription = stripdef[i].description + " " + (stripdef[i].hasOn ? "Muted" : "On");
+
+		if (stripDef[i].hasLevel) {
+			sendID = 'send';
+			if (sendID in sendActions) {
+				sendActions[sendID].options[0].choices.push({
+					id:    chID + '/',
+					label: sendLabel(stripDef[i].description, stripDef[i].min, stripDef[i].max)
+				});
+				l = sendActions[sendID].options[1].label + ", " + stripDef[i].description;
+				sendActions[sendID].options[1].label = l;
+				sendActions[sendID + '_a'].options[0].choices.push({
+					id:    chID + '/',
+					label: sendLabel(stripDef[i].description, stripDef[i].min, stripDef[i].max)
+				});
+				l = sendActions[sendID + '_a'].options[1].label + ", " + stripDef[i].description;
+				sendActions[sendID + '_a'].options[1].label = l;
+			} else {
+				sendActions[sendID] = {
+					label: "Send Level Set",
+					options: [
+						{
+							type:	'dropdown',
+							label:	'Type',
+							id:		'type',
+							choices: [ {
+								id: 	chID + '/',
+								label: sendLabel(stripDef[i].description, stripDef[i].min, stripDef[i].max)
+							} ],
+							default: chID + '/'
+						},
+						{
+							type: 'number',
+							label: stripDef[i].description,
+							id: 'chNum',
+							default: 1,
+							min: stripDef[i].min,
+							max: stripDef[i].max,
+							range: false,
+							required: true
+						},
+						{
+							type:	'dropdown',
+							label:	'Bus',
+							id:		'busNum',
+							choices: busOpts,
+							default: 1
+						},
+						{
+							type:	'dropdown',
+							label:	"Fader Level",
+							id:		'fad',
+							choices: self.fader_val
+						}
+
+					]
+				};
+				sendActions[sendID + '_a'] = {
+					label: "Send Level Adjust",
+					options: [
+						{
+							type:	'dropdown',
+							label:	'Type',
+							id:		'type',
+							choices: [ {
+								id: 	chID + '/',
+								label: sendLabel(stripDef[i].description, stripDef[i].min, stripDef[i].max)
+
+							} ],
+							default: chID + '/'
+						},
+						{
+							type: 'number',
+							label: stripDef[i].description,
+							id: 'chNum',
+							default: 1,
+							min: stripDef[i].min,
+							max: stripDef[i].max,
+							range: false,
+							required: true
+						},
+						{
+							type:	'dropdown',
+							label:	'Bus',
+							id:		'busNum',
+							choices: busOpts,
+							default: 1
+						},
+						{
+							type:	 'number',
+							title:	 "Move fader +/- percent.\nFader percent:\n0 = -oo, 75 = 0db, 100 = +10db",
+							label:	 "Adjust",
+							id:		 'ticks',
+							min:	 -100,
+							max:	 100,
+							default: 1
+						}
+					]
+				};
+			}
+			}
+
+		if (d == 0) {
+			theID = chID + muteSfx;
+			self.fbToStat[fbID] = theID;
+			stat[theID] = {
+				isOn: false,
+				hasOn: stripDef[i].hasOn,
+				valid: false,
+				fbID: fbID,
+				polled: 0
+			};
+			theID = chID + fadeSfx;
+			fID = 'f_' + unslash(fbID);
+			self.fbToStat[fID] = theID;
+			stat[theID] = {
+				fader: 0.0,
+				valid: false,
+				fbID: fID,
+				polled: 0
+			};
+			defVariables.push({
+				label: stripDef[i].description + " dB",
+				name: fID + "_d"
+			});
+			defVariables.push({
+				label: stripDef[i].description + " %",
+				name: fID + "_p"
+			});
+			if ('' != labelSfx) {
+				theID = chID + labelSfx + "/name";
+				fID = 'l_' + unslash(fbID);
+				self.fbToStat[fID] = theID;
+				stat[theID] = {
+					name: fbID,
+					defaultName: defaultLabel,
+					valid: false,
+					fbID: fID,
+					polled: 0
+				};
+				defVariables.push({
+					label: stripDef[i].description + " Label",
+					name: fID
+				});
+				theID = chID + labelSfx + "/color";
+				fID = 'c_' + unslash(fbID);
+				self.fbToStat[fID] = theID;
+				stat[theID] = {
+					color: 0,
+					valid: false,
+					fbID: fID,
+					polled: 0
+				};
+			}
+		} else {
+			for (c = stripDef[i].min; c <= stripDef[i].max; c++) {
+				theID = chID + '/' + ('00' + c).slice(-d) + muteSfx;
+				fID = fbID + '_' + c;
+				self.fbToStat[fID] = theID;
+				stat[theID] = {
+					isOn: false,
+					hasOn: stripDef[i].hasOn,
+					valid: false,
+					fbID: fbID,
+					polled: 0
+				};
+				if ('' != fadeSfx) {
+					theID = chID  + '/' + ('00' + c).slice(-d) + fadeSfx;
+					fID = 'f_' + unslash(fbID) + c;
+					self.fbToStat[fID] = theID;
+					stat[theID] = {
+						fader: 0.0,
+						valid: false,
+						fbID: fID,
+						polled: 0
+					};
+					defVariables.push({
+						label: stripDef[i].description + " " + c + " dB",
+						name: fID + "_d"
+					});
+					defVariables.push({
+						label: stripDef[i].description + " " + c + " %",
+						name: fID + "_p"
+					});
+					if (stripDef[i].hasLevel) {
+						for (b = 1; b<11; b++) {
+							bOrF = (b < 7 ? 'b' : 'f');
+							sChan = (b < 7 ? b : b-6);
+							theID = chID + '/' + ('00' + c).slice(-d) + '/mix/' + ('00' + b).slice(-2) + '/level';
+							sendID = (b<7 ? " Bus " + b : " FX " + (b - 6) );
+							fID = 's_' + unslash(fbID) + c + '_' + bOrF + sChan;
+							self.fbToStat[fID] = theID;
+							stat[theID] = {
+								level: 0.0,
+								valid: false,
+								fbID: fID,
+								polled: 0
+							};
+							defVariables.push({
+								label: capFirst(fbID) + " " + c + sendID + " dB",
+								name: fID + "_d"
+							});
+							defVariables.push({
+								label: capFirst(fbID) + " " + c + sendID + " %",
+								name: fID + "_p"
+							});
+						}
+					}
+				}
+				if ('' != labelSfx) {
+					theID = chID + '/' + ('00' + c).slice(-d) + labelSfx + "/name";
+					fID = 'l_' + unslash(fbID) + c;
+					self.fbToStat[fID] = theID;
+					stat[theID] = {
+						name: fbID + c,
+						defaultName: defaultLabel + c,
+						valid: false,
+						fbID: fID,
+						polled: 0
+					};
+					defVariables.push({
+						label: stripDef[i].description + " " + c + " Label",
+						name: fID
+					});
+					theID = chID + '/' + ('00' + c).slice(-d) + labelSfx + "/color";
+					fID = 'c_' + unslash(fbID) + c;
+					self.fbToStat[fID] = theID;
+					stat[theID] = {
+						color: 0,
+						valid: false,
+						fbID: 'c_' + unslash(fbID),
+						polled: 0
+					};
+				}
+			}
+		}
+
+		// mute feedback defs
+		fbDescription = stripDef[i].description + " " + (stripDef[i].hasOn ? "Muted" : "On");
 		muteFeedbacks[fbID] = {
 			label: 		 "Color when " + fbDescription,
 			description: "Set button colors when " + fbDescription,
@@ -246,71 +608,129 @@ instance.prototype.init_mutes = function () {
 			],
 			callback: function(feedback, bank) {
 				var theChannel = feedback.options.theChannel;
+				var fbType = feedback.type;
+				var stat;
 				if (theChannel) {
-					if (self.mute[self.fbToMute[feedback.type + "_" + theChannel]].isOn !=
-					    self.mute[self.fbToMute[feedback.type + "_" + theChannel]].hasOn) {
-						return { color: feedback.options.fg, bgcolor: feedback.options.bg };
-					}
-				} else if ( self.fbToMute[feedback.type] ) {
-					if (self.mute[self.fbToMute[feedback.type]].isOn !=
-						self.mute[self.fbToMute[feedback.type]].hasOn) {
-						return { color: feedback.options.fg, bgcolor: feedback.options.bg };
-					}
+					stat = self.xStat[self.fbToStat[fbType + '_' + theChannel]];
+				} else if ( self.fbToStat[fbType] ) {
+					stat = self.xStat[self.fbToStat[fbType]];
+				}
+				if (stat.isOn != stat.hasOn) {
+					return { color: feedback.options.fg, bgcolor: feedback.options.bg };
 				}
 			}
 		};
 		if (d>0) {
 			muteFeedbacks[fbID].options.push( {
 				type: 'number',
-				label: stripdef[i].description + ' number',
+				label: stripDef[i].description + ' number',
 				id: 'theChannel',
 				default: 1,
-				min: stripdef[i].min,
-				max: stripdef[i].max,
+				min: stripDef[i].min,
+				max: stripDef[i].max,
 				range: false,
 				required: true
 			} );
 		}
+
+		// channel color feedbacks
+		if (stripDef[i].hasOn) {
+			fbDescription = stripDef[i].description + " label";
+			var cID = 'c_' + unslash(fbID);
+			colorFeedbacks[cID] = {
+				label: 		 "Color of " + fbDescription,
+				description: "Use button colors from " + fbDescription,
+				options: [],
+				callback: function(feedback, bank) {
+					var theChannel = feedback.options.theChannel;
+					var fbType = feedback.type;
+					var stat;
+					if (theChannel) {
+						stat = self.xStat[self.fbToStat[fbType + theChannel]];
+					} else if ( self.fbToStat[fbType] ) {
+						stat = self.xStat[self.fbToStat[fbType]];
+					}
+					return { color: self.color_val[stat.color].fg, bgcolor: self.color_val[stat.color].bg };
+				}
+			};
+			if (d>0) {
+				colorFeedbacks[cID].options.push( {
+					type: 'number',
+					label: stripDef[i].description + ' number',
+					id: 'theChannel',
+					default: 1,
+					min: stripDef[i].min,
+					max: stripDef[i].max,
+					range: false,
+					required: true
+				} );
+			}
+		}
 	}
-	self.mute = mute;
-	self.muteActions = muteActions;
+	self.xStat = stat;
+	self.variableDefs = defVariables;
+	self.actionDefs = fadeActions;
+	Object.assign(self.actionDefs, sendActions);
+	Object.assign(self.actionDefs, muteActions);
 	self.muteFeedbacks = muteFeedbacks;
+	self.colorFeedbacks = colorFeedbacks;
 };
 
-instance.prototype.pollMutes = function () {
+instance.prototype.pollStats = function () {
 	var self = this;
 	var stillNeed = false;
 	var counter = 0;
 	var timeNow = Date.now();
-	var timeOut = timeNow - 50;
+	var timeOut = timeNow - 100;
+	var id;
 
-	for (var id in self.mute) {
-		if (!self.mute[id].valid && (self.mute[id].polled < timeOut)) {
-			self.sendOSC(id);
-			self.debug("sending " + id);
-			self.mute[id].polled = timeNow;
+	for (id in self.xStat) {
+		if (!self.xStat[id].valid) {
 			stillNeed = true;
-			counter++;
-			if (counter > 5) {
-				break;
+			if (self.xStat[id].polled < timeOut) {
+				self.sendOSC(id);
+				self.debug("sending " + id);
+				self.xStat[id].polled = timeNow;
+				counter++;
+				if (counter > 5) {
+					break;
+				}
 			}
 		}
 	}
+
 	if (!stillNeed) {
-		self.status(self.STATUS_OK,"Mutes loaded");
+		self.status(self.STATUS_OK,"Mixer Status loaded");
 	}
-	self.needMutes = stillNeed;
+	self.needStats = stillNeed;
 };
 
 instance.prototype.firstPoll = function () {
-	self = this;
+	var self = this;
 	var id;
 
 	self.sendOSC('/xinfo',[]);
 	self.sendOSC('/-snap/name',[]);
 	self.sendOSC('/-snap/index',[]);
-	self.pollMutes();
+	self.pollStats();
 	self.pulse();
+};
+
+instance.prototype.faderToDB = function ( f, steps ) {
+// “f” represents OSC float data. f: [0.0, 1.0]
+// “d” represents the dB float data. d:[-oo, +10]
+	var d = 0;
+
+	if (f >= 0.5) {
+		d = f * 40.0 - 30.0;		// max dB value: +10.
+	} else if (f >= 0.25) {
+		d = f * 80.0 - 50.0;
+	} else if (f >= 0.0625) {
+		d = f * 160.0 - 70.0;
+	} else if (f >= 0.0) {
+		d = f * 480.0 - 90.0;		// min dB value: -90 or -oo
+	}
+	return (f==0 ? "-oo" : (d>0 ? '+':'') + (Math.round(d * 1024) / 1024).toFixed(1));
 };
 
 instance.prototype.init_osc = function() {
@@ -335,13 +755,47 @@ instance.prototype.init_osc = function() {
 			var node = message.address;
 
 			// debug("received ", message, "from", info);
-			if (node in self.mute) {
-				self.mute[node].isOn = (args[0].value == 0 ? false : true);
-				self.mute[node].valid = true;
-				if (self.needMutes) {
-					self.pollMutes();
+			if (node in self.xStat) {
+				var v = args[0].value;
+				switch(node.split('/').pop()) {
+				case 'on':
+					self.xStat[node].isOn = (v == 1);
+					self.checkFeedbacks(self.xStat[node].fbID);
+					break;
+				case '1':
+				case '2':
+				case '3':
+				case '4':
+					self.xStat[node].isOn = (v == 1);
+					self.checkFeedbacks(self.xStat[node].fbID);
+					break;
+				case 'fader':
+					self.xStat[node].fader = v;
+					self.setVariable(self.xStat[node].fbID + '_p',Math.round(v * 100));
+					self.setVariable(self.xStat[node].fbID + '_d',self.faderToDB(v,1024));
+					break;
+				case 'level':
+					self.xStat[node].fader = v;
+					self.setVariable(self.xStat[node].fbID + '_p',Math.round(v * 100));
+					self.setVariable(self.xStat[node].fbID + '_d',self.faderToDB(v,161));
+					break;
+				case 'name':
+					// no name, use behringer default
+					if (v=='') {
+						v = self.xStat[node].defaultName;
+					}
+					self.xStat[node].name = v;
+					self.setVariable(self.xStat[node].fbID, v);
+					break;
+				case 'color':
+					self.xStat[node].color = v;
+					self.checkFeedbacks(self.xStat[node].fbID);
+					break;
 				}
-				self.checkFeedbacks(self.mute[node].feedback);
+				self.xStat[node].valid = true;
+				if (self.needStats) {
+					self.pollStats();
+				}
 				debug(message);
 			} else if (node.match(/^\/xinfo$/)) {
 				self.myMixer.name = args[1].value;
@@ -364,7 +818,7 @@ instance.prototype.init_osc = function() {
 		});
 
 		self.oscPort.on('ready', function() {
-			self.status(self.STATUS_WARNING,"Loading mutes");
+			self.status(self.STATUS_WARNING,"Loading status");
 			self.firstPoll();
 			self.heartbeat = setInterval( function () { self.pulse(); },9500);
 		});
@@ -415,10 +869,10 @@ instance.prototype.init_variables = function() {
 			name:  's_index'
 		}
 	];
-	var i = 0;
-	while (i < variables.length) {
+	variables.push.apply(variables, self.variableDefs);
+
+	for (var i in variables) {
 		self.setVariable(variables[i].name);
-		i++;
 	}
 	self.setVariableDefinitions(variables);
 };
@@ -463,6 +917,7 @@ instance.prototype.init_feedbacks = function() {
 		}
 	};
 	Object.assign(feedbacks,this.muteFeedbacks);
+	Object.assign(feedbacks,this.colorFeedbacks);
 	this.setFeedbackDefinitions(feedbacks);
 };
 
@@ -529,22 +984,22 @@ instance.prototype.fader_val = [
 ];
 
 instance.prototype.color_val = [
-		{ label: 'Off',              id: '0' },
-		{ label: 'Red: ',            id: '1' },
-		{ label: 'Green',            id: '2' },
-		{ label: 'Yellow',           id: '3' },
-		{ label: 'Blue',             id: '4' },
-		{ label: 'Magenta',          id: '5' },
-		{ label: 'Cyan',             id: '6' },
-		{ label: 'White',            id: '7' },
-		{ label: 'Off Inverted',     id: '8' },
-		{ label: 'Red Inverted',     id: '9' },
-		{ label: 'Green Inverted',   id: '10' },
-		{ label: 'Yellow Inverted',  id: '11' },
-		{ label: 'Blue Inverted',    id: '12' },
-		{ label: 'Magenta Inverted', id: '13' },
-		{ label: 'Cyan Inverted',    id: '14' },
-		{ label: 'White Inverted',   id: '15' }
+		{ label: 'Off',              id: '0',	bg: 0, fg: rgb( 64, 64, 64) },
+		{ label: 'Red: ',            id: '1',	bg: rgb(224,  0,  0), fg: 0 },
+		{ label: 'Green',            id: '2',	bg: rgb(  0,224,  0), fg: 0 },
+		{ label: 'Yellow',           id: '3',	bg: rgb(224,224,  0), fg: 0 },
+		{ label: 'Blue',             id: '4',	bg: rgb(  0,  0,224), fg: 0 },
+		{ label: 'Magenta',          id: '5',	bg: rgb(224,  0,224), fg: 0 },
+		{ label: 'Cyan',             id: '6',	bg: rgb(  0,192,224), fg: 0 },
+		{ label: 'White',            id: '7',	bg: rgb(224,224,224), fg: 0 },
+		{ label: 'Off Inverted',     id: '8',	bg: rgb( 64, 64, 64), fg: 0 },
+		{ label: 'Red Inverted',     id: '9',	bg: 0, fg: rgb(224,  0,  0) },
+		{ label: 'Green Inverted',   id: '10',	bg: 0, fg: rgb(  0,224,  0) },
+		{ label: 'Yellow Inverted',  id: '11',	bg: 0, fg: rgb(224,224,  0) },
+		{ label: 'Blue Inverted',    id: '12',	bg: 0, fg: rgb(  0,  0,224) },
+		{ label: 'Magenta Inverted', id: '13',	bg: 0, fg: rgb(224,  0,224) },
+		{ label: 'Cyan Inverted',    id: '14',	bg: 0, fg: rgb(  0,192,224) },
+		{ label: 'White Inverted',   id: '15',	bg: 0, fg: rgb(224,224,224) }
 ];
 
 
@@ -562,89 +1017,89 @@ instance.prototype.init_actions = function(system) {
 	var self = this;
 	var newActions = {};
 
-	Object.assign(newActions, self.muteActions, {
+	Object.assign(newActions, self.actionDefs, {
 
-		'fad':     {
-			label:        'Set fader level',
-			options: [
-				{
-					type:     'dropdown',
-					label:    'Type',
-					id:       'type',
-					choices:  [
-						{ id: '/ch/',      label: 'Channel 1-16' },
-						{ id: '/rtn/',     label: 'Fx Return 1-4' },
-						{ id: '/fxsend/',  label: 'Fx Send 1-4'  },
-						{ id: '/bus/',     label: 'Bus 1-6'  }
-					],
-					default:  '/ch/'
-				},
-				{
-					type:     'textinput',
-					label:    'Channel, Fx Return, Fx Send or Bus Number',
-					id:       'num',
-					default:  '1',
-					regex:    self.REGEX_NUMBER
-				},
-				{
-					type:     'dropdown',
-					label:    'Fader Level',
-					id:       'fad',
-					choices:  self.fader_val
-				}
-			]
-		},
+		// 'fad':     {
+		// 	label:        'Set fader level',
+		// 	options: [
+		// 		{
+		// 			type:     'dropdown',
+		// 			label:    'Type',
+		// 			id:       'type',
+		// 			choices:  [
+		// 				{ id: '/ch/',      label: 'Channel 1-16' },
+		// 				{ id: '/rtn/',     label: 'Fx Return 1-4' },
+		// 				{ id: '/fxsend/',  label: 'Fx Send 1-4'  },
+		// 				{ id: '/bus/',     label: 'Bus Master 1-6'  }
+		// 			],
+		// 			default:  '/ch/'
+		// 		},
+		// 		{
+		// 			type:     'textinput',
+		// 			label:    'Channel, Fx Return, Fx Send or Bus Number',
+		// 			id:       'num',
+		// 			default:  '1',
+		// 			regex:    self.REGEX_NUMBER
+		// 		},
+		// 		{
+		// 			type:     'dropdown',
+		// 			label:    'Fader Level',
+		// 			id:       'fad',
+		// 			choices:  self.fader_val
+		// 		}
+		// 	]
+		// },
 
-		'send':     {
-			label:        'Set ch Sends',
-			options: [
+		// 'send':     {
+		// 	label:        'Set ch Sends',
+		// 	options: [
 
-				{
-					type:     'textinput',
-					label:    'Channel Number',
-					id:       'chNum',
-					default:  '1',
-					regex:    self.REGEX_NUMBER
-				},
-				{
-					type:     'textinput',
-					label:    'Bus Number',
-					id:       'busNum',
-					default:  '1',
-					regex:    self.REGEX_NUMBER
-				},
-				{
-					type:     'dropdown',
-					label:    'Fader Level',
-					id:       'fad',
-					choices:  self.fader_val
-				}
-			]
-		},
+		// 		{
+		// 			type:     'textinput',
+		// 			label:    'Channel Number',
+		// 			id:       'chNum',
+		// 			default:  '1',
+		// 			regex:    self.REGEX_NUMBER
+		// 		},
+		// 		{
+		// 			type:     'textinput',
+		// 			label:    'Bus Number',
+		// 			id:       'busNum',
+		// 			default:  '1',
+		// 			regex:    self.REGEX_NUMBER
+		// 		},
+		// 		{
+		// 			type:     'dropdown',
+		// 			label:    'Fader Level',
+		// 			id:       'fad',
+		// 			choices:  self.fader_val
+		// 		}
+		// 	]
+		// },
 
-		'mFad':     {
-			label:        'Set Main fader level',
-			options: [
-				{
-					type:     'dropdown',
-					label:    'Fader Level',
-					id:       'fad',
-					choices:  self.fader_val
-				}
-			]
-		},
+		// 'mFad':     {
+		// 	label:        'Set Main fader level',
+		// 	options: [
+		// 		{
+		// 			type:     'dropdown',
+		// 			label:    'Fader Level',
+		// 			id:       'fad',
+		// 			choices:  self.fader_val
+		// 		}
+		// 	]
+		// },
 
-		'usbFad':     {
-			label:        'Set USB fader level',
-			options: [
-				{
-					type:     'dropdown',
-					label:    'Fader Level',
-					id:       'fad',
-					choices:  self.fader_val
-				}
-			]
-		},
+		// 'usbFad':     {
+		// 	label:        'Set USB fader level',
+		// 	options: [
+		// 		{
+		// 			type:     'dropdown',
+		// 			label:    'Fader Level',
+		// 			id:       'fad',
+		// 			choices:  self.fader_val
+		// 		}
+		// 	]
+		// },
 
 		'label':     {
 			label:     'Set label',
@@ -793,21 +1248,15 @@ instance.prototype.action = function(action) {
 	var self = this;
 	var cmd;
 	var opt = action.options;
-	var nVal;
+	var nVal, bVal;
 	var arg = {};
 
 	switch (action.action){
 
 		case 'mute':
 			if (opt.type == '/ch/') {
-				if (opt.num <= 9){
-					nVal = ('0' + parseInt(opt.num)).substr(-2);
-				}
-				if (opt.num >= 10) {
-					nVal = parseInt(opt.num);
-				}
-			}
-			if (opt.type != '/ch/') {
+				nVal = ('0' + parseInt(opt.num)).substr(-2);
+			} else {
 				nVal = parseInt(opt.num);
 			}
 			if (opt.type == '/dca/') {
@@ -817,7 +1266,7 @@ instance.prototype.action = function(action) {
 			}
 			arg = {
 				type: "i",
-				value: 2==parseInt(opt.mute) ? 1-self.mute[cmd].isOn : parseInt(opt.mute)
+				value: 2==parseInt(opt.mute) ? 1-self.xStat[cmd].isOn : parseInt(opt.mute)
 			};
 		break;
 
@@ -825,7 +1274,7 @@ instance.prototype.action = function(action) {
 			cmd = '/lr/mix/on';
 			arg = {
 				type: "i",
-				value: 2==parseInt(opt.mute) ? 1-self.mute[cmd].isOn : parseInt(opt.mute)
+				value: 2==parseInt(opt.mute) ? 1-self.xStat[cmd].isOn : parseInt(opt.mute)
 			};
 		break;
 
@@ -833,42 +1282,74 @@ instance.prototype.action = function(action) {
 			cmd = '/rtn/aux/mix/on';
 			arg = {
 				type: "i",
-				value: 2==parseInt(opt.mute) ? 1-self.mute[cmd].isOn : parseInt(opt.mute)
+				value: 2==parseInt(opt.mute) ? 1-self.xStat[cmd].isOn : parseInt(opt.mute)
 			};
 		break;
 
 		case 'fad':
-			arg = {
-				type: "f",
-				value: parseFloat(opt.fad)
-			};
 			if (opt.type == '/ch/') {
-				if (opt.num <= 9){
-					nVal = ('0' + parseInt(opt.num)).substr(-2);
-				}
-				if (opt.num >= 10) {
-					nVal = parseInt(opt.num);
-				}
-			}
-			if (opt.type != '/ch/') {
+				nVal = ('0' + parseInt(opt.num)).substr(-2);
+			} else {
 				nVal = parseInt(opt.num);
 			}
 			cmd = opt.type + nVal + '/mix/fader';
-		break;
-
-		case 'send':
 			arg = {
 				type: "f",
 				value: parseFloat(opt.fad)
 			};
-				if (opt.chNum <= 9){
-					nVal = ('0' + parseInt(opt.chNum)).substr(-2);
-				}
-				if (opt.chNum >= 10) {
-					nVal = parseInt(opt.chNum);
-				}
+		break;
 
-			cmd = '/ch/' + nVal + '/mix/' + '0' + opt.busNum + '/level';
+		case 'fad_a':
+			if (opt.type == '/ch/') {
+				nVal = ('0' + parseInt(opt.num)).substr(-2);
+			} else {
+				nVal = parseInt(opt.num);
+			}
+			cmd = opt.type + nVal + '/mix/fader';
+			arg = {
+				type: "f",
+				value: Math.min(1.0,Math.max(0.0,self.xStat[cmd].fader + parseInt(opt.ticks) / 100))
+			};
+		break;
+
+		case 'send':
+			switch (opt.type) {
+			case '/ch/':
+				nVal = ('0' + parseInt(opt.chNum)).substr(-2) + '/';
+				break;
+			case '/rtn/':
+				nVal = parseInt(opt.chNum) + '/';
+				break;
+			default:
+				nVal = '';
+			}
+			bVal = ('0' + parseInt(opt.busNum)).substr(-2);
+			cmd = opt.type + nVal + 'mix/' + bVal + '/level';
+
+			arg = {
+				type: "f",
+				value: parseFloat(opt.fad)
+			};
+		break;
+
+		case 'send_a':
+			switch (opt.type) {
+				case '/ch/':
+					nVal = ('0' + parseInt(opt.chNum)).substr(-2) + '/';
+					break;
+				case '/rtn/':
+					nVal = parseInt(opt.chNum) + '/';
+					break;
+				default:
+					nVal = '';
+				}
+				bVal = ('0' + parseInt(opt.busNum)).substr(-2);
+				cmd = opt.type + nVal + 'mix/' + bVal + '/level';
+
+				arg = {
+					type: "f",
+					value: Math.min(1.0,Math.max(0.0,self.xStat[cmd].fader + parseInt(opt.ticks) / 100))
+				};
 		break;
 
 		case 'mFad':
@@ -879,6 +1360,14 @@ instance.prototype.action = function(action) {
 			cmd = '/lr/mix/fader';
 		break;
 
+		case 'mFad_a':
+			cmd = '/lr/mix/fader';
+			arg = {
+				type: "f",
+				value: Math.min(1.0, Math.max(0.0 ,self.xStat[cmd].fader + parseInt(opt.ticks) / 100.0))
+			};
+		break;
+
 		case 'usbFad':
 			arg = {
 				type: "f",
@@ -886,6 +1375,15 @@ instance.prototype.action = function(action) {
 			};
 			cmd = '/rtn/aux/mix/fader';
 		break;
+
+		case 'usbFad_a':
+			cmd = '/rtn/aux/mix/fader';
+			arg = {
+				type: "f",
+				value: Math.min(1.0,Math.max(0.0,self.xStat[cmd].fader + parseInt(opt.ticks) / 100))
+			};
+		break;
+
 
 		case 'label':
 			arg = {
@@ -961,7 +1459,7 @@ instance.prototype.action = function(action) {
 			cmd = '/config/mute/'+ opt.mute_grp;
 			arg = {
 				type: "i",
-				value: 2==parseInt(opt.mute) ? 1-self.mute[cmd].isOn : parseInt(opt.mute)
+				value: 2==parseInt(opt.mute) ? 1-self.xStat[cmd].isOn : parseInt(opt.mute)
 			};
 		break;
 
