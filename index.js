@@ -1,8 +1,9 @@
-//'use strict';
+
 var instance_skel = require('../../instance_skel');
 var OSC = require('osc');
 var rgb = require('../../image').rgb;
 var stripDef = require('./stripdef.json');
+var soloDef = require('./solodef.json');
 var debug;
 var log;
 
@@ -76,12 +77,17 @@ function instance(system, id, config) {
 
 	self.debug = debug;
 	self.init_stats();
+	self.init_solos();
 	self.init_actions(); // export actions
 	self.init_variables();
 	self.init_feedbacks();
 
 	return self;
 }
+
+instance.prototype.ICON_SOLO =
+	'iVBORw0KGgoAAAANSUhEUgAAAEgAAAA6CAYAAAATBx+NAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAALEwAACxMBAJqcGAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAUcSURBVHic7ZpLaFxVGIC//96ZTNKkqSnGN+JzUS3oyqi1ogstqKAIuhIVFEUUtOBGhC5UxI2FgigYKLqpFRdV8FFsN1rFbtoGWwyl1lStsa+0NjNJzsy5M7+LuXdyZzKT00zSJpTzwYU573O/+c859w4jeQ0UTytMsNgzWOp4QQ4y6YQijyrl4cWazFIgIHgHeDJJ1wkKKf/dLRy64LNaQuSV8XTaLzEHXpADL8iBF+TAC3LgBTnwghx4QQ68IAdekAMvyIEX5MALcuAFOfCCHHhBDrwgB16QAy/IgRfkwAty4AU58IIceEEOvCAHXpADL8iBF+TAC3LgBTnwghx4QQ68IAcNf8GjfzEmoUpfucgalJUIY2VhpKODYRHa+gduZPhY4XpVjnd08dS8JpfXQJNrXIORgnL5vDqcIyXDC9ZQsAZtuE5Ehofa6dMafrUGLRlG5to2r8FgyslUbYmJgsB1SrBzXLm0nYnNldIkAwIfAd1NivsryhUXYh6zURPUYStINaBXC8GOs8rK8z54wLOpOWxEuVfgEYQ3YYn8mTQJpzgkdaJcC699/yl953Nsa9gRL6eTjWWqBKqsaMjrskXesIY91jBqDfut4T1tmGerJaZKr53i7bh81BqGbJENqtMR3LjE6gTNlBT+clJZvtBiUjeyLR43iqZ4WpVsq7qqdFjDj032KrWG31S5JNXvDEGqLLeGoabti+xWpbOZoBnHvABZWyGoKKB3dhJuP6H0LKya2mB74k+hCp9GJf61hi+iIk+okktXjYq8CqyN5/g7yrvAUFy8qlzkrdmGiopsAG6Lkwfi9gcBUAaiEq83bZjXQAupCEpfE2VJImnXMW26kc4LVfoiw+EWUbHfGG5I6iZRYQ1lY7gxbr/CGsbj/NOq1f2sWQRZw7G43pSOVw8hneQaa7Bx/sHYx+wRlKbDKmE1ku7pRrYlYbhQiHAmLHEHsAk401C8OqzmEy+9W+P84c5ODsftzwI/xfl9xnBts3F0giuh9viyW3o5BSDLOIrWovBmbRIEVUGzPI5la5LkgQLyZWPozxfpZSzbyWuZHJeh3CfC5lTxOlVCoIfp024s3V6lerMAYVi/qScUQ3pTyVN1hVLrT5isqwec46tG1iphWQFZV0C2zraZtosIUbaLHzI5ngN2JUMzQT8wwfTXWHdiSeoEq1TIN+s7V6GQStafzOkTcNnM9uf8LpaNapIeiyVlnI0cWMPGkuFlVTpq863KTx5UK3QzLkKJZEOFW3SSq+O6XcCaOH88l+PPpgN1MZqKlAGNT2bN049wO4DAiEidSGCOL6spSY8XCLbMV5IqVwl8EBX5xxq+iopsjooMAaviKvtEmKR6B1vivDAK+LpkWB8V+Y44IgQ+F6HcbBwRVJTP4mRPVGJ7ybA+yvAtVL8c1Vr/9eQ10EKl+SnW6pqMJHl3+yQ5OdqhNMXWWcYpR4aHUzKXWcPeZnVLhiNamH6HbPEctDIyHGox1oEkquZ0irUiiSSBZyYIBtuVlLW8ovAS8L3AH0CJ6mm2A+XBTCffJHVFmMzkuB94X+EIYIFRgcFsmbukh+O1urAb2Inyc6r96dByt8CHwFHAKvwFbMrkWCvSfP+SvAYqCrlSZc43GGWEKBSAwR4qL7b788RSIq/BIPB8nDTzEgQQhUKUEUCHQfYu1EQXkQHgpvjztKDqq0V7VAJBZUEmt9QwGQAVKIcX5x3Ol4xUH8LaRqt9CNVN86JCYep/T6xGm2u0hEsAAAAASUVORK5CYII=';
+
 
 instance.prototype.updateConfig = function(config) {
 	var self = this;
@@ -113,6 +119,280 @@ instance.prototype.pulse = function () {
 	if (self.needStats) {
 		self.pollStats();
 	}
+};
+
+instance.prototype.init_solos = function () {
+	var self = this;
+
+	var c, i, ch, cm, cMap, id, actID, soloID, cmd, pfx;
+
+	var stat = {};
+	var fbDescription;
+	var soloActions = [];
+	var soloFeedbacks = {};
+	var soloVariables = [];
+
+	function soloLabel(d, min, max) {
+		return d + (0 == max-min ? '' : " (" + min + "-" + max + ")");
+	}
+
+
+	var def = soloDef;
+
+	for (id in def) {
+		cmd = def[id];
+		pfx = cmd.prefix;
+		cMap = cmd.cmdMap;
+		switch (cmd.id) {
+		case "solosw":
+			for (cm in cmd.cmdMap) {
+				ch = cMap[cm];
+				soloID = cmd.id + '_' + ch.actID;
+				soloActions[soloID] = {
+					label: soloLabel(ch.description + " Solo", ch.min, ch.max),
+					options: []
+				};
+				if (ch.min == ch.max) {
+					c = ('00' + (ch.min + ch.offset)).slice(-2);
+					self.fbToStat[soloID] = pfx + c;
+					stat[pfx + c] = {
+						fbID: soloID, //+ '_' + c,
+						valid: false,
+						polled: 0,
+						hasOn: true,
+						isOn: false
+					};
+				} else {
+					for (i = ch.min; i<=ch.max; i++) {
+						c = ('00' + (i + ch.offset)).slice(-2);
+						self.fbToStat[soloID + i] = pfx + c;
+						stat[pfx + c] = {
+							fbID: soloID, // + '_' + c,
+							valid: false,
+							polled: 0,
+							hasOn: true,
+							isOn: false
+						};
+					}
+					soloActions[soloID].options.push( {
+						type: 'number',
+						label: ch.description,
+						id: 'num',
+						default: 1,
+						min: ch.min,
+						max: ch.max,
+						range: false,
+						required: true
+					});
+
+				}
+				soloActions[soloID].options.push( {
+					type:	'dropdown',
+					label:	'Solo',
+					id:		'solo',
+					default: '2',
+					choices: [
+						{id: '1', label: 'On'},
+						{id: '0', label: 'Off'},
+						{id: '2', label: 'Toggle'}
+					]
+				} );
+				// solo feedback defs
+				fbDescription = ch.description + " Solo On";
+				soloFeedbacks[soloID] = {
+					label: 		 fbDescription,
+					description: "Indicate when " + fbDescription,
+					options: [
+						// {
+						// 	type: 'colorpicker',
+						// 	label: 'Foreground color',
+						// 	id: 'fg',
+						// 	default: '16777215'
+						// },
+						// {
+						// 	type: 'colorpicker',
+						// 	label: 'Background color',
+						// 	id: 'bg',
+						// 	default: self.rgb(96,96,0)
+						// },
+					],
+					callback: function(feedback, bank) {
+						var theChannel = feedback.options.theChannel;
+						var fbType = feedback.type;
+						var stat;
+						if (theChannel) {
+							stat = self.xStat[self.fbToStat[fbType + theChannel]];
+						} else if ( self.fbToStat[fbType] ) {
+							stat = self.xStat[self.fbToStat[fbType]];
+						}
+						if (stat.isOn) {
+							return { color: 16777215, bgcolor: 0, png64: self.ICON_SOLO };
+						}
+					}
+				};
+				if (ch.min != ch.max) {
+					soloFeedbacks[soloID].options.push( {
+						type: 'number',
+						label: ch.description + ' number',
+						id: 'theChannel',
+						default: 1,
+						min: ch.min,
+						max: ch.max,
+						range: false,
+						required: true
+					} );
+				}
+			}
+			break;
+		case "config":
+			for (cm in cmd.cmdMap) {
+				ch = cMap[cm];
+				actID = 'solo_' + ch.actID;
+				soloID = 'f_solo';
+				c = pfx + ch.actID;
+				stat[c] = {
+					fbID: soloID,
+					valid: false,
+					polled: 0
+				};
+				self.fbToStat[soloID] = c;
+				if (ch.isFader) {
+					fbDescription = "Solo " + ch.description;
+					soloActions[actID] = {
+						label: fbDescription + " Set",
+						options: [ {
+							type:	'dropdown',
+							label:	'Fader Level',
+							id:		'fad',
+							choices: self.fader_val
+						} ]
+					};
+					soloActions[actID + '_a'] = {
+						label: fbDescription + " Adjust",
+						options: [{
+							type:	 'number',
+							tooltip:	 "Move fader +/- percent.\nFader Percent:\n0 = -oo, 75 = 0db, 100 = +10db",
+							label:	 'Adjust',
+							id:		 'ticks',
+							min:	 -100,
+							max:	 100,
+							default: 1
+						} ]
+					};
+					stat[c].fader = 0;
+					soloVariables.push({
+						label: fbDescription + " dB",
+						name: soloID + "_d"
+					});
+					soloVariables.push({
+						label: fbDescription + " %",
+						name: soloID + "_p"
+					});
+				} else {
+					soloActions[actID] = {
+						label: "Solo " + ch.description,
+						options: []
+					};
+					soloActions[actID].options.push( {
+						type:	'dropdown',
+						label:	'Value',
+						id:		'set',
+						default: '2',
+						choices: [
+							{id: '1', label: 'On'},
+							{id: '0', label: 'Off'},
+							{id: '2', label: 'Toggle'}
+						]
+					} );
+					stat[c].isOn = false;
+					soloFeedbacks[actID] = {
+						label: 		 "Solo " + ch.description + " on",
+						description: "Color on Solo " + ch.description,
+						options: [
+							{
+								type: 'colorpicker',
+								label: 'Foreground color',
+								id: 'fg',
+								default: '16777215'
+							},
+							{
+								type: 'colorpicker',
+								label: 'Background color',
+								id: 'bg',
+								default: rgb.apply(this, ch.bg)
+							},
+						],
+						callback: function(feedback, bank) {
+							var theChannel = feedback.options.theChannel;
+							var fbType = feedback.type;
+							var stat = self.xStat[self.fbToStat[fbType]];
+							if (stat.isOn) {
+								return { color: feedback.options.fg, bgcolor: feedback.options.bg };
+							}
+						}
+					};
+				}
+			}
+			break;
+		case 'action':
+			for (cm in cmd.cmdMap) {
+				ch = cMap[cm];
+				actID = ch.actID;
+				c = pfx + ch.actID;
+				soloID = ch.statID;
+				soloActions[actID] = {
+					label: ch.description,
+					description: ch.description,
+					options: []
+				};
+				stat[soloID] = {
+					fbID: actID,
+					valid: false,
+					polled: 0
+				};
+				self.fbToStat[actID] = soloID;
+				if (!ch.hasFader) {
+					stat[soloID].isOn = false;
+					soloFeedbacks[actID] = {
+						label: 		 ch.statDesc,
+						description: "Color when " + ch.description,
+						options: [
+							{
+								type: 'colorpicker',
+								label: 'Foreground color',
+								id: 'fg',
+								default: 0
+							},
+							{
+								type: 'colorpicker',
+								label: 'Background color',
+								id: 'bg',
+								default: rgb.apply(this,ch.bg)
+							},
+						],
+						callback: function(feedback, bank) {
+							var theChannel = feedback.options.theChannel;
+							var fbType = feedback.type;
+							var stat;
+							if (theChannel) {
+								stat = self.xStat[self.fbToStat[fbType + theChannel]];
+							} else if ( self.fbToStat[fbType] ) {
+								stat = self.xStat[self.fbToStat[fbType]];
+							}
+							if (stat.isOn) {
+								return { color: feedback.options.fg, bgcolor: feedback.options.bg};
+							}
+						}
+					};
+				}
+			}
+			break;
+		}
+	}
+	Object.assign(self.xStat, stat);
+	Object.assign(self.variableDefs, soloVariables);
+	Object.assign(self.actionDefs, soloActions);
+	Object.assign(self.muteFeedbacks, soloFeedbacks);
 };
 
 instance.prototype.init_stats = function () {
@@ -225,11 +505,14 @@ instance.prototype.init_stats = function () {
 					label: stripDef[i].description,
 					options: [
 						{
-							type:	'textinput',
+							type:	'number',
 							label:	stripDef[i].description + " " + stripDef[i].min + "-" + stripDef[i].max,
 							id:		'mute_grp',
 							default:'1',
-							regex:	self.REGEX_NUMBER
+							min: stripDef[i].min,
+							max: stripDef[i].max,
+							range: false,
+							required: true
 						}
 					]
 				};
@@ -765,7 +1048,7 @@ instance.prototype.init_osc = function() {
 				case '1':
 				case '2':
 				case '3':
-				case '4':
+				case '4': // '/config/mute/#'
 					self.xStat[node].isOn = (v == 1);
 					self.checkFeedbacks(self.xStat[node].fbID);
 					break;
@@ -791,6 +1074,17 @@ instance.prototype.init_osc = function() {
 					self.xStat[node].color = v;
 					self.checkFeedbacks(self.xStat[node].fbID);
 					break;
+				case 'mono':
+				case 'dim':
+				case 'mute':	// '/config/solo/'
+					self.xStat[node].isOn = v;
+					self.checkFeedbacks(self.xStat[node].fbID);
+					break;
+				default:
+					if (node.match(/\/solo/)) {
+						self.xStat[node].isOn = v;
+						self.checkFeedbacks(self.xStat[node].fbID);
+					}
 				}
 				self.xStat[node].valid = true;
 				if (self.needStats) {
@@ -1019,88 +1313,6 @@ instance.prototype.init_actions = function(system) {
 
 	Object.assign(newActions, self.actionDefs, {
 
-		// 'fad':     {
-		// 	label:        'Set fader level',
-		// 	options: [
-		// 		{
-		// 			type:     'dropdown',
-		// 			label:    'Type',
-		// 			id:       'type',
-		// 			choices:  [
-		// 				{ id: '/ch/',      label: 'Channel 1-16' },
-		// 				{ id: '/rtn/',     label: 'Fx Return 1-4' },
-		// 				{ id: '/fxsend/',  label: 'Fx Send 1-4'  },
-		// 				{ id: '/bus/',     label: 'Bus Master 1-6'  }
-		// 			],
-		// 			default:  '/ch/'
-		// 		},
-		// 		{
-		// 			type:     'textinput',
-		// 			label:    'Channel, Fx Return, Fx Send or Bus Number',
-		// 			id:       'num',
-		// 			default:  '1',
-		// 			regex:    self.REGEX_NUMBER
-		// 		},
-		// 		{
-		// 			type:     'dropdown',
-		// 			label:    'Fader Level',
-		// 			id:       'fad',
-		// 			choices:  self.fader_val
-		// 		}
-		// 	]
-		// },
-
-		// 'send':     {
-		// 	label:        'Set ch Sends',
-		// 	options: [
-
-		// 		{
-		// 			type:     'textinput',
-		// 			label:    'Channel Number',
-		// 			id:       'chNum',
-		// 			default:  '1',
-		// 			regex:    self.REGEX_NUMBER
-		// 		},
-		// 		{
-		// 			type:     'textinput',
-		// 			label:    'Bus Number',
-		// 			id:       'busNum',
-		// 			default:  '1',
-		// 			regex:    self.REGEX_NUMBER
-		// 		},
-		// 		{
-		// 			type:     'dropdown',
-		// 			label:    'Fader Level',
-		// 			id:       'fad',
-		// 			choices:  self.fader_val
-		// 		}
-		// 	]
-		// },
-
-		// 'mFad':     {
-		// 	label:        'Set Main fader level',
-		// 	options: [
-		// 		{
-		// 			type:     'dropdown',
-		// 			label:    'Fader Level',
-		// 			id:       'fad',
-		// 			choices:  self.fader_val
-		// 		}
-		// 	]
-		// },
-
-		// 'usbFad':     {
-		// 	label:        'Set USB fader level',
-		// 	options: [
-		// 		{
-		// 			type:     'dropdown',
-		// 			label:    'Fader Level',
-		// 			id:       'fad',
-		// 			choices:  self.fader_val
-		// 		}
-		// 	]
-		// },
-
 		'label':     {
 			label:     'Set label',
 			options: [
@@ -1249,7 +1461,7 @@ instance.prototype.action = function(action) {
 	var cmd;
 	var opt = action.options;
 	var nVal, bVal;
-	var arg = {};
+	var arg = [];
 
 	switch (action.action){
 
@@ -1384,6 +1596,54 @@ instance.prototype.action = function(action) {
 			};
 		break;
 
+		case 'solo_level':
+			cmd = '/config/solo/level';
+			arg = {
+				type: "f",
+				value: parseFloat(opt.fad)
+			};
+		break;
+
+		case 'solo_level_a':
+			cmd = '/config/solo/level';
+			arg = {
+				type: "f",
+				value: Math.min(1.0,Math.max(0.0,self.xStat[cmd].fader + parseInt(opt.ticks) / 100))
+			};
+		break;
+
+		case 'solo_mute':
+			cmd = '/config/solo/mute';
+			arg = {
+				type: "i",
+				value: 2==parseInt(opt.set) ? 1-self.xStat[cmd].isOn : parseInt(opt.set)
+			};
+		break;
+
+		case 'solo_mono':
+			cmd = '/config/solo/mono';
+			arg = {
+				type: "i",
+				value: 2==parseInt(opt.set) ? 1-self.xStat[cmd].isOn : parseInt(opt.set)
+			};
+		break;
+
+		case 'solo_dim':
+			cmd = '/config/solo/dim';
+			arg = {
+				type: "i",
+				value: 2==parseInt(opt.set) ? 1-self.xStat[cmd].isOn : parseInt(opt.set)
+			};
+		break;
+
+		case 'clearsolo':
+			cmd = '/-action/clearsolo';
+			// needs an arg for some silly reason
+			arg = {
+				type: "i",
+				value: 1
+			};
+		break;
 
 		case 'label':
 			arg = {
