@@ -30,6 +30,7 @@ function instance(system, id, config) {
 	self.muteFeedbacks = {};
 	self.colorFeedbacks = {};
 	self.variableDefs = [];
+	self.blinkingFB = {};
 	self.needStats = true;
 
 	// super-constructor
@@ -118,6 +119,16 @@ instance.prototype.pulse = function () {
 	// any leftover status needed?
 	if (self.needStats) {
 		self.pollStats();
+	}
+};
+
+/**
+ * blink feedbacks
+ */
+instance.prototype.blink = function () {
+	var self = this;
+	for (var f in self.blinkingFB) {
+		self.checkFeedbacks(f);
 	}
 };
 
@@ -251,11 +262,12 @@ instance.prototype.init_solos = function () {
 				soloID = 'f_solo';
 				c = pfx + ch.actID;
 				stat[c] = {
-					fbID: soloID,
+					fbID: actID,
+					varID: soloID,
 					valid: false,
 					polled: 0
 				};
-				self.fbToStat[soloID] = c;
+				self.fbToStat[actID] = c;
 				if (ch.isFader) {
 					fbDescription = "Solo " + ch.description;
 					soloActions[actID] = {
@@ -323,7 +335,6 @@ instance.prototype.init_solos = function () {
 							},
 						],
 						callback: function(feedback, bank) {
-							var theChannel = feedback.options.theChannel;
 							var fbType = feedback.type;
 							var stat = self.xStat[self.fbToStat[fbType]];
 							if (stat.isOn) {
@@ -358,6 +369,12 @@ instance.prototype.init_solos = function () {
 						description: "Color when " + ch.description,
 						options: [
 							{
+								type: 	'checkbox',
+								label: 	'Blink?',
+								id:		'blink',
+								default: 0
+							},
+							{
 								type: 'colorpicker',
 								label: 'Foreground color',
 								id: 'fg',
@@ -371,17 +388,25 @@ instance.prototype.init_solos = function () {
 							},
 						],
 						callback: function(feedback, bank) {
-							var theChannel = feedback.options.theChannel;
+							var opt = feedback.options;
 							var fbType = feedback.type;
-							var stat;
-							if (theChannel) {
-								stat = self.xStat[self.fbToStat[fbType + theChannel]];
-							} else if ( self.fbToStat[fbType] ) {
-								stat = self.xStat[self.fbToStat[fbType]];
-							}
+							var stat = self.xStat[self.fbToStat[fbType]];
+
 							if (stat.isOn) {
-								return { color: feedback.options.fg, bgcolor: feedback.options.bg};
+								if (opt.blink) {		// wants blink
+									if (self.blinkingFB[stat.fbID]) {
+										self.blinkingFB[stat.fbID] = false;
+										// blink off
+										return;
+									} else {
+										self.blinkingFB[stat.fbID] = true;
+									}
+								}
+								return { color: opt.fg, bgcolor: opt.bg };
+							} else if (self.blinkingFB[stat.fbID]) {
+								delete self.blinkingFB[stat.fbID];
 							}
+
 						}
 					};
 				}
@@ -752,6 +777,7 @@ instance.prototype.init_stats = function () {
 				fader: 0.0,
 				valid: false,
 				fbID: fID,
+				varID: fID,
 				polled: 0
 			};
 			defVariables.push({
@@ -1059,8 +1085,8 @@ instance.prototype.init_osc = function() {
 					break;
 				case 'level':
 					self.xStat[node].fader = v;
-					self.setVariable(self.xStat[node].fbID + '_p',Math.round(v * 100));
-					self.setVariable(self.xStat[node].fbID + '_d',self.faderToDB(v,161));
+					self.setVariable(self.xStat[node].varID + '_p',Math.round(v * 100));
+					self.setVariable(self.xStat[node].varID + '_d',self.faderToDB(v,161));
 					break;
 				case 'name':
 					// no name, use behringer default
@@ -1114,22 +1140,31 @@ instance.prototype.init_osc = function() {
 		self.oscPort.on('ready', function() {
 			self.status(self.STATUS_WARNING,"Loading status");
 			self.firstPoll();
-			self.heartbeat = setInterval( function () { self.pulse(); },9500);
+			self.heartbeat = setInterval( function () { self.pulse(); }, 9500);
+			self.blinker = setInterval( function() { self.blink(); }, 1000);
 		});
 
 		self.oscPort.on('close', function() {
-			if (self.heartbeat !== undefined) {
+			if (self.heartbeat) {
 				clearInterval(self.heartbeat);
-				self.heartbeat = undefined;
+				delete self.heartbeat;
+			}
+			if (self.blinker) {
+				clearInterval(self.blinker);
+				delete self.blinker;
 			}
 		});
 
 		self.oscPort.on('error', function(err) {
 			self.log('error', "Error: " + err.message);
 			self.status(self.STATUS_ERROR, err.message);
-			if (self.heartbeat !== undefined) {
+			if (self.heartbeat) {
 				clearInterval(self.heartbeat);
-				self.heartbeat = undefined;
+				delete self.heartbeat;
+			}
+			if (self.blinker) {
+				clearInterval(self.blinker);
+				delete self.blinker;
 			}
 		});
 
@@ -1233,6 +1268,11 @@ instance.prototype.config_fields = function () {
 instance.prototype.destroy = function() {
 	if (this.heartbeat) {
 		clearInterval(this.heartbeat);
+		delete self.blinker;
+	}
+	if (self.blinker) {
+		clearInterval(self.blinker);
+		delete self.blinker;
 	}
 	if (this.oscPort) {
 		this.oscPort.close();
