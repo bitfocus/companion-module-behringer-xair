@@ -3,7 +3,7 @@
 	"legacy": [
 		"xair"
 	],
-	"version": "1.4.0",
+	"version": "1.5.0",
 	"api_version": "1.0.0",
 	"keywords": [
 		"Audio"
@@ -16,9 +16,9 @@
 	"scripts": {
 		"test": "echo \"Error: no test specified\" && exit 1"
 	},
-	"author": "Per Roine <per.roine@gmail.com>",
+	"author": "John Knight, Jr <istnv@ayesti.com>",
 	"contributors": [
-		"John Knight, Jr <istnv@ayesti.com>",
+		"Per Roine <per.roine@gmail.com>",
 		"Janos Münker"
 	],
 	"license": "MIT"

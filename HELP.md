@@ -12,15 +12,19 @@ Console Function | What it does
 -----------------|---------------
 Channel, USB, FX Send, Fx Return, Bus and Main mute | Mutes or Unmutes the selected Channel, USB, FX Send, Fx Return, Bus and Main
 Channel, USB, FX Send, Fx Return, Bus and Main fader set | Sets the level of the selected Channel, Channel, USB, FX Send, Fx Return, Bus and Main fader
-Channel, USB, FX Send, Fx Return, Bus and Main fader adjust | Adjust the selected Channel, Channel, USB, FX Send, Fx Return, Bus and Main fader up or down by steps **see note**
+Channel, USB, FX Send, Fx Return, Bus and Main fader adjust | Adjust the selected Channel, Channel, USB, FX Send, Fx Return, Bus and Main fader up or down by steps **see note*
 Channel, USB, FX Send, Fx Return, Bus and Main label | Sets the text label in the scribble strip of the selected Channel, USB, FX Send, Fx Return, Bus and Main
 Channel, USB, FX Send, Fx Return, Bus and Main color | Sets the color of the scribble strip of the selected Channel, USB, FX Send, Fx Return, Bus and Main
 Mute Group | Turns the selected mute group on or off
+Bus sends | Bus sends for channels
+Channel, USB, FX Send, Fx Return, Bus and Main Solo | Solos the selected Channel, USB, FX Send, Fx Return, Bus and Main
+Clear Solo | Clears all active solos
+Solo Level Set | Sets the level of the Solo (monitor) output
+Solo Level Adjust | Adjust the Solo (monitor) output up or down by steps **see note*
 Load Console Snapshot | Loads the given Snapshot from the consoles internal Snapshot list 1-64
 Tape Operation | Stop,Play,PlayPause,Record,RecordPause,Fast Forward,Rewind of the tape Deck
-Bus sends | Bus sends for channels
 
-**Note:** All mute actions also have a Toggle option that inverts the current state of the board channel.
+**Note:** All mute and solo actions also have a Toggle option that inverts the current state of the board channel.
 
 **Note:** This module stores fader position as a range from 0 (-oo dB) to 100 (+10dB). The conversion from position to dB is explained below.
 
@@ -54,6 +58,8 @@ Variable | Description
 **$(INSTANCENAME:f_rtn#_p)** | Return # Fader Percent
 **$(INSTANCENAME:f_fxsend#_d)** | FX Bus Master # Fader dB
 **$(INSTANCENAME:f_fxsend#_p)** | FX Bus Master # Fader Percent
+**$(INSTANCENAME:f_solo_d)** | Solo (monitor) output level dB
+**$(INSTANCENAME:f_solo_p)** | Solo (monitor) output level Percent
 
 
 ## Feedback
@@ -67,10 +73,20 @@ Variable | Description
 **Color of Channel label** | Sets the button color to match the seleted channel (Channel/Bus/DCA/FX send/FX return) label
 **Color of Main LR label** | Sets the button color to match the Main LR label
 **Color of USB/Aux label** | Sets the button color to match the USB/Aux label
+**Indicate Channel Solo** | Changes the button when (Channel/Bus/DCA/FX send/FX return) Solo on
+**Indicate Main LR Solo** | Changes the button when Main LR Solo on
+**Indicate USB/Aux Solo** | Changes the button when USB/Aux Solo on
+**Color when Solo Mute** | Sets the button color when the Solo output is muted
+**Color when Solo Mono** | Sets the button color when the Solo output is mono
+**Color when Solo Dim** | Sets the button color when the Solo output is dimmed
+**Color when Any Solo Active** | Sets the button color when 'Clr Solo' is active
 
 
 ## Notes
 Channel ranges are maximums (compatible with the X18). If you have an X12 or X16 invalid channels are ignored.
+
+Solo Feedback indicator changes the button color to white on black with an overlay:<br>
+![Solo](images/solo-opaque.png "Solo")
 
 For additional actions please raise a feature request at [github](https://github.com/bitfocus/companion)
 
