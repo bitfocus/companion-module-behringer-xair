@@ -758,7 +758,7 @@ instance.prototype.init_stats = function () {
 					]
 				};
 			}
-			}
+		}
 
 		if (d == 0) {
 			theID = chID + muteSfx;
@@ -855,6 +855,7 @@ instance.prototype.init_stats = function () {
 								level: 0.0,
 								valid: false,
 								fbID: fID,
+								varID: fID,
 								polled: 0
 							};
 							defVariables.push({
