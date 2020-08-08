@@ -26,6 +26,7 @@ function instance(system, id, config) {
 	self.xStat = {};
 	// stat id from mixer address
 	self.fbToStat = {};
+	self.soloOffset = {};
 	self.actionDefs = {};
 	self.muteFeedbacks = {};
 	self.colorFeedbacks = {};
@@ -142,6 +143,7 @@ instance.prototype.init_solos = function () {
 	var soloActions = [];
 	var soloFeedbacks = {};
 	var soloVariables = [];
+	var soloOffset = {};
 
 	function soloLabel(d, min, max) {
 		return d + (0 == max-min ? '' : " (" + min + "-" + max + ")");
@@ -159,8 +161,9 @@ instance.prototype.init_solos = function () {
 			for (cm in cmd.cmdMap) {
 				ch = cMap[cm];
 				soloID = cmd.id + '_' + ch.actID;
+				soloOffset[soloID] = ch.offset;
 				soloActions[soloID] = {
-					label: soloLabel(ch.description + " Solo", ch.min, ch.max),
+					label: soloLabel("Solo " + ch.description, ch.min, ch.max),
 					options: []
 				};
 				if (ch.min == ch.max) {
@@ -209,7 +212,7 @@ instance.prototype.init_solos = function () {
 					]
 				} );
 				// solo feedback defs
-				fbDescription = ch.description + " Solo On";
+				fbDescription = "Solo " + ch.description + " On";
 				soloFeedbacks[soloID] = {
 					label: 		 fbDescription,
 					description: "Indicate when " + fbDescription,
@@ -244,7 +247,7 @@ instance.prototype.init_solos = function () {
 				if (ch.min != ch.max) {
 					soloFeedbacks[soloID].options.push( {
 						type: 'number',
-						label: ch.description + ' number',
+						label: ch.description + " number",
 						id: 'theChannel',
 						default: 1,
 						min: ch.min,
@@ -414,6 +417,7 @@ instance.prototype.init_solos = function () {
 			break;
 		}
 	}
+	self.soloOffset = soloOffset;
 	Object.assign(self.xStat, stat);
 	Object.assign(self.variableDefs, soloVariables);
 	Object.assign(self.actionDefs, soloActions);
@@ -1635,6 +1639,22 @@ instance.prototype.action = function(action) {
 				type: "f",
 				value: Math.min(1.0,Math.max(0.0,self.xStat[cmd].fader + parseInt(opt.ticks) / 100))
 			};
+		break;
+
+		case 'solosw_ch':
+		case 'solosw_aux':
+		case 'solosw_fxr':
+		case 'solosw_bus':
+		case 'solosw_fsx':
+		case 'solosw_lr':
+		case 'solosw_dca':
+			nVal = (opt.num ? opt.num : 1);
+			cmd = "/-stat/solosw/" + ('00' + (self.soloOffset[action.action] + nVal)).slice(-2);
+			arg = {
+				type: "i",
+				value: 2==parseInt(opt.solo) ? 1-self.xStat[cmd].isOn : parseInt(opt.solo)
+			};
+
 		break;
 
 		case 'solo_level':
