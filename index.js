@@ -78,11 +78,7 @@ function instance(system, id, config) {
 	self.port_offset = po;
 
 	self.debug = debug;
-	self.init_stats();
-	self.init_solos();
-	self.init_actions(); // export actions
-	self.init_variables();
-	self.init_feedbacks();
+	self.log = log;
 
 	return self;
 }
@@ -96,18 +92,27 @@ instance.prototype.updateConfig = function(config) {
 
 	self.config = config;
 	self.init_osc();
+	self.init_stats();
+	self.init_solos();
+	self.init_actions();
 	self.init_variables();
 	self.init_feedbacks();
-
+	self.init_presets();
 };
 
 instance.prototype.init = function() {
 	var self = this;
-	self.status(self.STATUS_OK); // status ok!
+
 	debug = self.debug;
 	log = self.log;
+
 	self.init_osc();
+	self.init_stats();
+	self.init_solos();
+	self.init_actions();
 	self.init_variables();
+	self.init_feedbacks();
+	self.init_presets();
 	debug(Object.keys(self.xStat).length + " status addresses loaded");
 };
 
@@ -131,6 +136,85 @@ instance.prototype.blink = function () {
 	for (var f in self.blinkingFB) {
 		self.checkFeedbacks(f);
 	}
+};
+
+instance.prototype.init_presets = function () {
+	var self = this;
+
+	var presets = [
+		{
+			category: 'Channels',
+			label: 'Channel 1 Label\nIncludes Label, Color, Mute toggle, Mute feedback, Solo feedback',
+			bank: {
+				style: 'png',
+				text: '$(xair:l_ch1)',
+				size: '18',
+				color: rgb(255,255,255),
+				bgcolor: 0
+			},
+			actions: [
+				{
+					action: 'mute',
+					options: {
+						type: '/ch/',
+						num: 1,
+						mute: 2
+					}
+				}
+			],
+			feedbacks: [
+				{
+					type: 'c_ch',
+					options: {
+						theChannel: 1
+					}
+				},
+				{
+					type: 'ch',
+					options: {
+						fg: 16777215,
+						bg: rgb(128,0,0),
+						theChannel: 1
+					}
+				},
+				{
+					type: 'solosw_ch',
+					options: {
+						theChannel: 1
+					}
+				}
+			]
+		},
+		{
+			category: 'Channels',
+			label: 'Channel 1 Level\nIncludes Fader dB, Color, Solo toggle',
+			bank: {
+				style: 'png',
+				text: '$(xair:f_ch1_d)',
+				size: '18',
+				color: rgb(255,255,255),
+				bgcolor: 0
+			},
+			actions: [
+				{
+					action: 'solosw_ch',
+					options: {
+						num: 1,
+						solo: 2
+					}
+				}
+			],
+			feedbacks: [
+				{
+					type: 'c_ch',
+					options: {
+						theChannel: 1
+					}
+				}
+			]
+		}
+	];
+	self.setPresetDefinitions(presets);
 };
 
 instance.prototype.init_solos = function () {
@@ -1273,11 +1357,11 @@ instance.prototype.config_fields = function () {
 instance.prototype.destroy = function() {
 	if (this.heartbeat) {
 		clearInterval(this.heartbeat);
-		delete self.blinker;
+		delete this.heartbeat;
 	}
-	if (self.blinker) {
-		clearInterval(self.blinker);
-		delete self.blinker;
+	if (this.blinker) {
+		clearInterval(this.blinker);
+		delete this.blinker;
 	}
 	if (this.oscPort) {
 		this.oscPort.close();
