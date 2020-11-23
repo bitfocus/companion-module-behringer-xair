@@ -1600,13 +1600,14 @@ instance.prototype.action = function(action) {
 			} else {
 				nVal = parseInt(opt.num);
 			}
+			cmd = opt.type + nVal;
 			if (opt.type == '/dca/') {
-				cmd = opt.type + nVal + "/on";
+				cmd += '/on';
 			} else {
-				cmd = opt.type + nVal + '/mix/on';
+				cmd += '/mix/on';
 			}
 			arg = {
-				type: "i",
+				type: 'i',
 				value: 2==parseInt(opt.mute) ? 1-self.xStat[cmd].isOn : parseInt(opt.mute)
 			};
 		break;
@@ -1614,7 +1615,7 @@ instance.prototype.action = function(action) {
 		case 'mMute':
 			cmd = '/lr/mix/on';
 			arg = {
-				type: "i",
+				type: 'i',
 				value: 2==parseInt(opt.mute) ? 1-self.xStat[cmd].isOn : parseInt(opt.mute)
 			};
 		break;
@@ -1622,35 +1623,35 @@ instance.prototype.action = function(action) {
 		case 'usbMute':
 			cmd = '/rtn/aux/mix/on';
 			arg = {
-				type: "i",
+				type: 'i',
 				value: 2==parseInt(opt.mute) ? 1-self.xStat[cmd].isOn : parseInt(opt.mute)
 			};
 		break;
 
 		case 'fad':
-			if (opt.type == '/ch/') {
-				nVal = ('0' + parseInt(opt.num)).substr(-2);
-			} else {
-				nVal = parseInt(opt.num);
-			}
-			cmd = opt.type + nVal + '/mix/fader';
-			arg = {
-				type: "f",
-				value: parseFloat(opt.fad)
-			};
-		break;
-
 		case 'fad_a':
 			if (opt.type == '/ch/') {
 				nVal = ('0' + parseInt(opt.num)).substr(-2);
 			} else {
 				nVal = parseInt(opt.num);
 			}
-			cmd = opt.type + nVal + '/mix/fader';
-			arg = {
-				type: "f",
-				value: Math.min(1.0,Math.max(0.0,self.xStat[cmd].fader + parseInt(opt.ticks) / 100))
-			};
+			cmd = opt.type + nVal;
+			if (opt.type == '/dca/') {
+				cmd += '/fader';
+			} else {
+				cmd += '/mix/fader';
+			}
+			if (action.action == 'fad') {
+				arg = {
+					type: 'f',
+					value: parseFloat(opt.fad)
+				};
+			} else {
+				arg = {
+					type: 'f',
+					value: Math.min(1.0,Math.max(0.0,self.xStat[cmd].fader + parseInt(opt.ticks) / 100))
+				};
+			}
 		break;
 
 		case 'send':
@@ -1668,7 +1669,7 @@ instance.prototype.action = function(action) {
 			cmd = opt.type + nVal + 'mix/' + bVal + '/level';
 
 			arg = {
-				type: "f",
+				type: 'f',
 				value: parseFloat(opt.fad)
 			};
 		break;
@@ -1688,14 +1689,14 @@ instance.prototype.action = function(action) {
 				cmd = opt.type + nVal + 'mix/' + bVal + '/level';
 
 				arg = {
-					type: "f",
+					type: 'f',
 					value: Math.min(1.0,Math.max(0.0,self.xStat[cmd].fader + parseInt(opt.ticks) / 100))
 				};
 		break;
 
 		case 'mFad':
 			arg = {
-				type: "f",
+				type: 'f',
 				value: parseFloat(opt.fad)
 			};
 			cmd = '/lr/mix/fader';
@@ -1704,14 +1705,14 @@ instance.prototype.action = function(action) {
 		case 'mFad_a':
 			cmd = '/lr/mix/fader';
 			arg = {
-				type: "f",
+				type: 'f',
 				value: Math.min(1.0, Math.max(0.0 ,self.xStat[cmd].fader + parseInt(opt.ticks) / 100.0))
 			};
 		break;
 
 		case 'usbFad':
 			arg = {
-				type: "f",
+				type: 'f',
 				value: parseFloat(opt.fad)
 			};
 			cmd = '/rtn/aux/mix/fader';
@@ -1720,7 +1721,7 @@ instance.prototype.action = function(action) {
 		case 'usbFad_a':
 			cmd = '/rtn/aux/mix/fader';
 			arg = {
-				type: "f",
+				type: 'f',
 				value: Math.min(1.0,Math.max(0.0,self.xStat[cmd].fader + parseInt(opt.ticks) / 100))
 			};
 		break;
@@ -1735,7 +1736,7 @@ instance.prototype.action = function(action) {
 			nVal = (opt.num ? opt.num : 1);
 			cmd = "/-stat/solosw/" + ('00' + (self.soloOffset[action.action] + nVal)).slice(-2);
 			arg = {
-				type: "i",
+				type: 'i',
 				value: 2==parseInt(opt.solo) ? 1-self.xStat[cmd].isOn : parseInt(opt.solo)
 			};
 
@@ -1744,7 +1745,7 @@ instance.prototype.action = function(action) {
 		case 'solo_level':
 			cmd = '/config/solo/level';
 			arg = {
-				type: "f",
+				type: 'f',
 				value: parseFloat(opt.fad)
 			};
 		break;
@@ -1752,7 +1753,7 @@ instance.prototype.action = function(action) {
 		case 'solo_level_a':
 			cmd = '/config/solo/level';
 			arg = {
-				type: "f",
+				type: 'f',
 				value: Math.min(1.0,Math.max(0.0,self.xStat[cmd].fader + parseInt(opt.ticks) / 100))
 			};
 		break;
@@ -1760,7 +1761,7 @@ instance.prototype.action = function(action) {
 		case 'solo_mute':
 			cmd = '/config/solo/mute';
 			arg = {
-				type: "i",
+				type: 'i',
 				value: 2==parseInt(opt.set) ? 1-self.xStat[cmd].isOn : parseInt(opt.set)
 			};
 		break;
@@ -1768,7 +1769,7 @@ instance.prototype.action = function(action) {
 		case 'solo_mono':
 			cmd = '/config/solo/mono';
 			arg = {
-				type: "i",
+				type: 'i',
 				value: 2==parseInt(opt.set) ? 1-self.xStat[cmd].isOn : parseInt(opt.set)
 			};
 		break;
@@ -1776,7 +1777,7 @@ instance.prototype.action = function(action) {
 		case 'solo_dim':
 			cmd = '/config/solo/dim';
 			arg = {
-				type: "i",
+				type: 'i',
 				value: 2==parseInt(opt.set) ? 1-self.xStat[cmd].isOn : parseInt(opt.set)
 			};
 		break;
@@ -1785,7 +1786,7 @@ instance.prototype.action = function(action) {
 			cmd = '/-action/clearsolo';
 			// needs an arg for some silly reason
 			arg = {
-				type: "i",
+				type: 'i',
 				value: 1
 			};
 		break;
@@ -1827,7 +1828,7 @@ instance.prototype.action = function(action) {
 
 		case 'color':
 			arg = {
-				type: "i",
+				type: 'i',
 				value: parseInt(opt.col)
 			};
 			if (opt.type == '/ch/') {
@@ -1846,7 +1847,7 @@ instance.prototype.action = function(action) {
 
 		case 'mColor':
 			arg = {
-				type: "i",
+				type: 'i',
 				value: parseInt(opt.col)
 			};
 			cmd = '/lr/config/color';
@@ -1854,7 +1855,7 @@ instance.prototype.action = function(action) {
 
 		case 'usbColor':
 			arg = {
-				type: "i",
+				type: 'i',
 				value: parseInt(opt.col)
 			};
 			cmd = '/rtn/aux/config/color';
@@ -1863,14 +1864,14 @@ instance.prototype.action = function(action) {
 		case 'mute_grp':
 			cmd = '/config/mute/'+ opt.mute_grp;
 			arg = {
-				type: "i",
+				type: 'i',
 				value: 2==parseInt(opt.mute) ? 1-self.xStat[cmd].isOn : parseInt(opt.mute)
 			};
 		break;
 
 		case 'load_snap':
 			arg = {
-				type: "i",
+				type: 'i',
 				value: parseInt(opt.snap)
 			};
 			cmd = '/-snap/load';
@@ -1878,7 +1879,7 @@ instance.prototype.action = function(action) {
 
 		case 'tape':
 			arg = {
-				type: "i",
+				type: 'i',
 				value: parseInt(opt.tFunc)
 			};
 			cmd = '/-stat/tape/state';
