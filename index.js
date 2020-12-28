@@ -33,6 +33,8 @@ function instance(system, id, config) {
 	self.blinkingFB = {};
 	self.needStats = true;
 
+	self.setConstants();
+
 	// super-constructor
 	instance_skel.apply(this, arguments);
 
@@ -1380,8 +1382,10 @@ instance.prototype.sendOSC = function (node, arg) {
 	}
 };
 
-instance.prototype.fader_val = [
-
+instance.prototype.setConstants = function() {
+	var self = this;
+	
+	self.fader_val = [
 		{ label: '- ∞',        id: '0.0' },
 		{ label: '-50 dB: ',   id: '0.1251' },
 		{ label: '-30 dB',     id: '0.251' },
@@ -1403,9 +1407,9 @@ instance.prototype.fader_val = [
 		{ label: '+6 dB',      id: '0.9' },
 		{ label: '+9 dB',      id: '0.975' },
 		{ label: '+10 dB',     id: '1.0' }
-];
+	];
 
-instance.prototype.color_val = [
+	self.color_val = [
 		{ label: 'Off',              id: '0',	bg: 0, fg: self.rgb( 64, 64, 64) },
 		{ label: 'Red: ',            id: '1',	bg: self.rgb(224,  0,  0), fg: 0 },
 		{ label: 'Green',            id: '2',	bg: self.rgb(  0,224,  0), fg: 0 },
@@ -1422,10 +1426,9 @@ instance.prototype.color_val = [
 		{ label: 'Magenta Inverted', id: '13',	bg: 0, fg: self.rgb(224,  0,224) },
 		{ label: 'Cyan Inverted',    id: '14',	bg: 0, fg: self.rgb(  0,192,224) },
 		{ label: 'White Inverted',   id: '15',	bg: 0, fg: self.rgb(224,224,224) }
-];
+	];
 
-
-instance.prototype.tape_func = [
+	self.tape_func = [
 		{ label: 'STOP',                id: '0' },
 		{ label: 'PLAY PAUSE',          id: '1' },
 		{ label: 'PLAY',                id: '2' },
@@ -1433,7 +1436,8 @@ instance.prototype.tape_func = [
 		{ label: 'RECORD',              id: '4' },
 		{ label: 'FAST FORWARD',        id: '5' },
 		{ label: 'REWIND',              id: '6' }
-];
+	];
+}
 
 instance.prototype.init_actions = function(system) {
 	var self = this;
