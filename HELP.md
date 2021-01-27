@@ -12,21 +12,30 @@ Console Function | What it does
 -----------------|---------------
 Channel, USB, FX Send, Fx Return, Bus and Main mute | Mutes or Unmutes the selected Channel, USB, FX Send, Fx Return, Bus and Main
 Channel, USB, FX Send, Fx Return, Bus and Main fader set | Sets the level of the selected Channel, Channel, USB, FX Send, Fx Return, Bus and Main fader
-Channel, USB, FX Send, Fx Return, Bus and Main fader adjust | Adjust the selected Channel, Channel, USB, FX Send, Fx Return, Bus and Main fader up or down by steps **see note*
+Channel, USB, FX Send, Fx Return, Bus and Main fader adjust | Adjust the selected Channel, Channel, USB, FX Send, Fx Return, Bus and Main fader up or down by steps **see notes*
+Store Fader Channel, USB, FX Send, Fx Return, Bus and Main | Stores the selected fader value for later recall **see notes*
+Recall Fader Channel, USB, FX Send, Fx Return, Bus and Main | Sets the selected fader to the stored value
 Channel, USB, FX Send, Fx Return, Bus and Main label | Sets the text label in the scribble strip of the selected Channel, USB, FX Send, Fx Return, Bus and Main
 Channel, USB, FX Send, Fx Return, Bus and Main color | Sets the color of the scribble strip of the selected Channel, USB, FX Send, Fx Return, Bus and Main
 Mute Group | Turns the selected mute group on or off
-Bus sends | Bus sends for channels
+Bus send | Adjust Bus send for channels
+Store Bus send | Stores the selected Bus send level for later recall **see notes*
+Recall Bus send | Recalls the selected Bus send level
 Channel, USB, FX Send, Fx Return, Bus and Main Solo | Solos the selected Channel, USB, FX Send, Fx Return, Bus and Main
 Clear Solo | Clears all active solos
 Solo Level Set | Sets the level of the Solo (monitor) output
-Solo Level Adjust | Adjust the Solo (monitor) output up or down by steps **see note*
+Solo Level Adjust | Adjust the Solo level up or down by steps **see notes*
+Solo Dim | Dims the Solo output level to the value configured in the console.
+Solo Mute | Mutes the Solo output
+Solo Mono | Controls the Mono mix-down of the Solo output
 Load Console Snapshot | Loads the given Snapshot from the consoles internal Snapshot list 1-64
 Tape Operation | Stop,Play,PlayPause,Record,RecordPause,Fast Forward,Rewind of the tape Deck
 
-**Note:** All mute and solo actions also have a Toggle option that inverts the current state of the board channel.
+**Note *mute and slolo*:** All mute and solo actions also have a Toggle option that inverts the current state of the board channel.
 
-**Note:** This module stores fader position as a range from 0 (-oo dB) to 100 (+10dB). The conversion from position to dB is explained below.
+**Note *fader adjustment*:** This module stores fader position as a range from 0 (-oo dB) to 100 (+10dB). The conversion from position to dB is explained below. Fader changes also have an optional duration of 0 to 60000 mSec (0 to 60 seconds) to create cross fades.
+
+**Note *Storage and Recall*:** Each channel or bus send has one save value. Recall will only restore the last value saved. There are also 10 Global slots available to store a value that may be recalled to any channel. Recalling an empty slot will have no effect.
 
 
 ## Dynamic Variables
