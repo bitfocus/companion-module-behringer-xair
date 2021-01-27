@@ -37,6 +37,7 @@ function instance(system, id, config) {
 	self.fLevels[1024] = [];
 	self.fLevels[161] = [];
 	self.blinkingFB = {};
+	self.crossFades = {};
 	self.needStats = true;
 
 	self.setConstants();
@@ -107,6 +108,9 @@ instance.prototype.init = function() {
 	debug = self.debug;
 	log = self.log;
 
+	// cross-fade steps per second
+	self.fadeResolution = 20;
+
 	self.init_osc();
 	self.init_strips();
 	self.init_solos();
@@ -118,7 +122,7 @@ instance.prototype.init = function() {
 };
 
 /**
- * heartbeat to request updates, expires every 10 seconds
+ * heartbeat to request updates, subscription expires every 10 seconds
  */
 instance.prototype.pulse = function () {
 	var self = this;
@@ -138,6 +142,35 @@ instance.prototype.blink = function () {
 		self.checkFeedbacks(f);
 	}
 };
+
+/**
+ * timed fades
+ */
+instance.prototype.doFades = function () {
+	var self = this;
+	var arg = { type: 'f' };
+	var fadeDone = [];
+
+	for (var f in self.crossFades) {
+		var c = self.crossFades[f];
+		c.atStep++;
+		var atStep = c.atStep;
+		var newVal = c.startVal + (c.delta * atStep)
+
+		arg.value = (Math.sign(c.delta)>0) ? Math.min(c.finalVal, newVal) : Math.max(c.finalVal, newVal);
+
+		self.sendOSC(f, arg);
+
+		if (atStep > c.steps) {
+			fadeDone.push(f);
+		}
+	}
+
+	// delete completed fades
+	for (f in fadeDone) {
+		delete self.crossFades[fadeDone[f]];
+	}
+}
 
 instance.prototype.init_presets = function () {
 	var self = this;
@@ -370,6 +403,7 @@ instance.prototype.init_solos = function () {
 							type:	'dropdown',
 							label:	'Fader Level',
 							id:		'fad',
+							default: '0.0',
 							choices: self.FADER_VALUES
 						} ]
 					};
@@ -817,6 +851,7 @@ instance.prototype.init_strips = function () {
 					type:	'dropdown',
 					label:	'Fader Level',
 					id:		'fad',
+					default: '0.0',
 					choices: self.FADER_VALUES
 				});
 
@@ -833,6 +868,18 @@ instance.prototype.init_strips = function () {
 				});
 
 				fadeActions[fadeID + '_a'].order = i;
+
+				for (var sfx of ['','_a']) {
+					fadeActions[fadeID + sfx].options.push( {
+						type: 'number',
+						label: 'Fade Duration (ms)',
+						id: 'duration',
+						default: 0,
+						min: 0,
+						step: 10,
+						max: 60000
+					})
+				}
 
 				storeActions[fadeID + '_s'].options.push( {
 					type:	 'dropdown',
@@ -864,7 +911,18 @@ instance.prototype.init_strips = function () {
 					]
 				});
 
+				storeActions[fadeID + '_r'].options.push( {
+					type: 'number',
+					label: 'Fade Duration (ms)',
+					id: 'duration',
+					default: 0,
+					min: 0,
+					step: 10,
+					max: 60000
+				})
+
 				storeActions[fadeID + '_r'].order = i;
+
 			}
 		}
 
@@ -935,6 +993,7 @@ instance.prototype.init_strips = function () {
 							type:	'dropdown',
 							label:	"Fader Level",
 							id:		'fad',
+							default: '0.0',
 							choices: self.FADER_VALUES
 						}
 
@@ -983,6 +1042,19 @@ instance.prototype.init_strips = function () {
 						}
 					]
 				};
+
+
+				for (var sfx of ['','_a']) {
+					sendActions[sendID + sfx].options.push( {
+						type: 'number',
+						label: 'Fade Duration (ms)',
+						id: 'duration',
+						default: 0,
+						min: 0,
+						step: 10,
+						max: 60000
+					})
+				}
 
 				storeActions[sendID + '_s'] = {
 					label: "Store Send Level",
@@ -1075,6 +1147,16 @@ instance.prototype.init_strips = function () {
 						}
 					]
 				};
+
+				storeActions[sendID + '_r'].options.push( {
+					type: 'number',
+					label: 'Fade Duration (ms)',
+					id: 'duration',
+					default: 0,
+					min: 0,
+					step: 10,
+					max: 60000
+				})
 			}
 		}
 
@@ -1131,6 +1213,32 @@ instance.prototype.init_strips = function () {
 					fbID: fID,
 					polled: 0
 				};
+			}
+			if (stripDef[i].hasLevel) {
+				for (b = 1; b<11; b++) {
+					bOrF = (b < 7 ? 'b' : 'f');
+					sChan = (b < 7 ? b : b-6);
+					theID = chID + '/mix/' + ('00' + b).slice(-2) + '/level';
+					sendID = (b<7 ? " Bus " + b : " FX " + (b - 6) );
+					fID = 's_' + unslash(fbID) + c + '_' + bOrF + sChan;
+					self.fbToStat[fID] = theID;
+					stat[theID] = {
+						level: 0.0,
+						valid: false,
+						fbID: fID,
+						fSteps: 161,
+						varID: fID,
+						polled: 0
+					};
+					defVariables.push({
+						label: capFirst(fbID) + " " + c + sendID + " dB",
+						name: fID + "_d"
+					});
+					defVariables.push({
+						label: capFirst(fbID) + " " + c + sendID + " %",
+						name: fID + "_p"
+					});
+				}
 			}
 		} else {
 			for (c = stripDef[i].min; c <= stripDef[i].max; c++) {
@@ -1368,7 +1476,7 @@ instance.prototype.faderToDB = function ( f, steps ) {
 	} else if (f >= 0.0) {
 		d = f * 480.0 - 90.0;		// min dB value: -90 or -oo
 	}
-	return (f==0 ? "-oo" : (d>0 ? '+':'') + (Math.round(d * 1024) / 1024).toFixed(1));
+	return (f==0 ? "-oo" : (d>0 ? '+':'') + (Math.round(d * 1023.5) / 1024).toFixed(1));
 };
 
 instance.prototype.init_osc = function() {
@@ -1470,6 +1578,7 @@ instance.prototype.init_osc = function() {
 			self.firstPoll();
 			self.heartbeat = setInterval( function () { self.pulse(); }, 9500);
 			self.blinker = setInterval( function() { self.blink(); }, 1000);
+			self.fader = setInterval( function() { self.doFades(); }, 1000 / self.fadeResolution);
 		});
 
 		self.oscPort.on('close', function() {
@@ -1480,6 +1589,10 @@ instance.prototype.init_osc = function() {
 			if (self.blinker) {
 				clearInterval(self.blinker);
 				delete self.blinker;
+			}
+			if (self.fader) {
+				clearInterval(self.fader);
+				delete self.fader;
 			}
 		});
 
@@ -1493,6 +1606,10 @@ instance.prototype.init_osc = function() {
 			if (self.blinker) {
 				clearInterval(self.blinker);
 				delete self.blinker;
+			}
+			if (self.fader) {
+				clearInterval(self.fader);
+				delete self.fader;
 			}
 		});
 
@@ -1601,6 +1718,10 @@ instance.prototype.destroy = function() {
 	if (this.blinker) {
 		clearInterval(this.blinker);
 		delete this.blinker;
+	}
+	if (self.fader) {
+		clearInterval(self.fader);
+		delete self.fader;
 	}
 	if (this.oscPort) {
 		this.oscPort.close();
@@ -1852,24 +1973,62 @@ instance.prototype.action = function(action) {
 	var cmd;
 	var subAct = action.action.slice(-2);
 	var opt = action.options;
-	var nVal, bVal;
-	var span = opt.duration;
+	var nVal, bVal, fVal;
 	var arg = [];
 
-	// calculate
+	// calculate new fader/level float
+	// returns a 'new' float value
+	// or undefined for store or crossfade
 	function fadeTo(cmd, opt) {
 		var node = cmd.split('/').pop();
 		var opTicks = parseInt(opt.ticks);
 		var steps = self.xStat[cmd].fSteps;
-		var pace = steps / 100;
+		var span = parseFloat(opt.duration);
 		var oldVal = self.xStat[cmd][node];
 		var oldIdx = self.xStat[cmd].idx;
-		var byVal = opTicks * pace;
+		var byVal = opTicks * steps / 100;
 		var newIdx = Math.min(steps-1,Math.max(0, oldIdx + Math.round(byVal)));
+		var slot = opt.store == 'me' ? cmd : opt.store;
+		var r, byVal, newIdx;
 
-		var r =  subAct == '_a'
-			? self.fLevels[steps][newIdx]
-			: parseFloat(opt.fad);
+		switch (subAct) {
+			case '_a':			// adjust +/- (pseudo %)
+				byVal = opTicks * steps / 100;
+				newIdx = Math.min(steps-1,Math.max(0, oldIdx + Math.round(byVal)));
+				r = self.fLevels[steps][newIdx];
+			break;
+			case '_r':			// restore
+				r = slot && self.tempStore[slot] ? self.tempStore[slot] : -1;
+			break;
+			case '_s':			// store
+				if (slot) {		// sanity check
+					self.tempStore[slot] = self.xStat[cmd][node];
+				}
+				r = -1;
+				// the 'store' actions are internal to this module only
+				// r is left undefined since there is nothing to send
+			break;
+			default:			// set new value
+				r = parseFloat(opt.fad);
+		}
+		// set up cross fade?
+		if (span>0 && r >= 0) {
+			var xSteps = span / (1000 / self.fadeResolution);
+			var xDelta = Math.floor((r - oldVal) / xSteps * 10000) / 10000;
+			if (xDelta == 0) { // already there
+				r = -1;
+			} else {
+				self.crossFades[cmd] = {
+					steps: xSteps,
+					delta: xDelta,
+					startVal: oldVal,
+					finalVal: r,
+					atStep: 1
+				}
+				// start the xfade
+				r = oldVal + xDelta;
+			}
+		}
 		self.debug(`---------- ${oldIdx}:${oldVal} by ${byVal}(${opTicks}) fadeTo ${newIdx}:${r} ----------`);
 		return r;
 	}
@@ -1877,7 +2036,6 @@ instance.prototype.action = function(action) {
 	function setToggle(cmd, opt) {
 		return 2 == parseInt(opt) ? 1-self.xStat[cmd].isOn : parseInt(opt)
 	}
-
 
 	switch (action.action){
 
@@ -1938,26 +2096,12 @@ instance.prototype.action = function(action) {
 			} else {
 				cmd += '/mix/fader';
 			}
-			if (['_s','_r'].includes(subAct)) {  // store & recall
-				var slot = opt.store == 'me' ? cmd : opt.store;
-				if (slot) {
-					if (subAct == '_s') {  // store
-						self.tempStore[slot] = self.xStat[cmd].fader;
-					} else if (self.tempStore[slot]) {		// recall
-						arg = {
-							type: 'f',
-							value: self.tempStore[slot]
-						}
-					} else {	// empty store, ignore
-						cmd = undefined;
-					}
-				} else { 		// undefined slot, ignore
-					cmd = undefined;
-				}
-			} else {	// fade to or adjust
+			if ((fVal = fadeTo(cmd, opt)) < 0) {
+				cmd = undefined;
+			} else {
 				arg = {
 					type: 'f',
-					value: fadeTo(cmd, opt)
+					value: fVal
 				};
 			}
 		break;
@@ -1978,26 +2122,12 @@ instance.prototype.action = function(action) {
 			}
 			bVal = ('0' + parseInt(opt.busNum)).substr(-2);
 			cmd = opt.type + nVal + 'mix/' + bVal + '/level';
-			if (['_s','_r'].includes(subAct)) {  // store & recall
-				var slot = opt.store == 'me' ? cmd : opt.store;
-				if (slot) {
-					if (subAct == '_s') {  // store
-						self.tempStore[slot] = self.xStat[cmd].fader;
-					} else if (self.tempStore[slot]) {		// recall
-						arg = {
-							type: 'f',
-							value: self.tempStore[slot]
-						}
-					} else {	// empty store, ignore
-						cmd = undefined;
-					}
-				} else { 		// undefined slot, ignore
-					cmd = undefined;
-				}
+			if ((fVal = fadeTo(cmd, opt)) < 0) {
+				cmd = undefined;
 			} else {
 				arg = {
 					type: 'f',
-					value: fadeTo(cmd, opt)
+					value: fVal
 				};
 			}
 		break;
@@ -2007,26 +2137,12 @@ instance.prototype.action = function(action) {
 		case 'mFad_s':
 		case 'mFad_r':
 			cmd = '/lr/mix/fader';
-			if (['_s','_r'].includes(subAct)) {  // store & recall
-				var slot = opt.store == 'me' ? cmd : opt.store;
-				if (slot) {
-					if (subAct == '_s') {  // store
-						self.tempStore[slot] = self.xStat[cmd].fader;
-					} else if (self.tempStore[slot]) {		// recall
-						arg = {
-							type: 'f',
-							value: self.tempStore[slot]
-						}
-					} else {	// empty store, ignore
-						cmd = undefined;
-					}
-				} else { 		// undefined slot, ignore
-					cmd = undefined;
-				}
+			if ((fVal = fadeTo(cmd, opt)) < 0) {
+				cmd = undefined;
 			} else {
 				arg = {
 					type: 'f',
-					value: fadeTo(cmd, opt)
+					value: fVal
 				};
 			}
 		break;
@@ -2035,26 +2151,12 @@ instance.prototype.action = function(action) {
 		case 'usbFad_a':
 		case 'usbFad_r':
 			cmd = '/rtn/aux/mix/fader';
-			if (['_s','_r'].includes(subAct)) {  // store & recall
-				var slot = opt.store == 'me' ? cmd : opt.store;
-				if (slot) {
-					if (subAct == '_s') {  // store
-						self.tempStore[slot] = self.xStat[cmd].fader;
-					} else if (self.tempStore[slot]) {		// recall
-						arg = {
-							type: 'f',
-							value: self.tempStore[slot]
-						}
-					} else {	// empty store, ignore
-						cmd = undefined;
-					}
-				} else { 		// undefined slot, ignore
-					cmd = undefined;
-				}
+			if ((fVal = fadeTo(cmd, opt)) < 0) {
+				cmd = undefined;
 			} else {
 				arg = {
 					type: 'f',
-					value: fadeTo(action.action, cmd, opt)
+					value: fVal
 				};
 			}
 		break;
@@ -2062,10 +2164,14 @@ instance.prototype.action = function(action) {
 		case 'solo_level':
 		case 'solo_level_a':
 			cmd = '/config/solo/level';
-			arg = {
-				type: 'f',
-				value: fadeTo(action.action, cmd, opt)
-			};
+			if ((fVal = fadeTo(cmd, opt)) < 0) {
+				cmd = undefined;
+			} else {
+				arg = {
+					type: 'f',
+					value: fVal
+				};
+			}
 		break;
 
 		case 'solosw_ch':
