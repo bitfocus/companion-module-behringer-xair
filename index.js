@@ -1261,6 +1261,7 @@ instance.prototype.init_strips = function () {
 						valid: false,
 						fSteps: 1024,
 						fbID: fID,
+						varID: fID,
 						polled: 0
 					};
 					defVariables.push({
@@ -1520,8 +1521,8 @@ instance.prototype.init_osc = function() {
 				case 'level':
 					v = Math.floor(v * 10000) / 10000;
 					self.xStat[node][leaf] = v;
-					self.setVariable(self.xStat[node].fbID + '_p',Math.round(v * 100));
-					self.setVariable(self.xStat[node].fbID + '_d',self.faderToDB(v,1024));
+					self.setVariable(self.xStat[node].varID + '_p',Math.round(v * 100));
+					self.setVariable(self.xStat[node].varID + '_d',self.faderToDB(v,1024));
 					self.xStat[node].idx = self.fLevels[self.xStat[node].fSteps].findIndex((i) => i >= v);
 					break;
 				case 'name':
