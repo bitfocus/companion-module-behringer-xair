@@ -1711,22 +1711,24 @@ instance.prototype.config_fields = function () {
 
 // When module gets deleted
 instance.prototype.destroy = function() {
-	if (this.heartbeat) {
-		clearInterval(this.heartbeat);
-		delete this.heartbeat;
+	var self = this;
+
+	if (self.heartbeat) {
+		clearInterval(self.heartbeat);
+		delete self.heartbeat;
 	}
-	if (this.blinker) {
-		clearInterval(this.blinker);
-		delete this.blinker;
+	if (self.blinker) {
+		clearInterval(self.blinker);
+		delete self.blinker;
 	}
 	if (self.fader) {
 		clearInterval(self.fader);
 		delete self.fader;
 	}
-	if (this.oscPort) {
-		this.oscPort.close();
+	if (self.oscPort) {
+		self.oscPort.close();
 	}
-	debug("destroy", this.id);
+	debug("destroy", self.id);
 };
 
 instance.prototype.sendOSC = function (node, arg) {
