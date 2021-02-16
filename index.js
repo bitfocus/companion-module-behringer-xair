@@ -155,7 +155,7 @@ instance.prototype.doFades = function () {
 		var c = self.crossFades[f];
 		c.atStep++;
 		var atStep = c.atStep;
-		var newVal = c.startVal + (c.delta * atStep)
+		var newVal = c.startVal + (c.delta * atStep);
 
 		arg.value = (Math.sign(c.delta)>0) ? Math.min(c.finalVal, newVal) : Math.max(c.finalVal, newVal);
 
@@ -170,7 +170,7 @@ instance.prototype.doFades = function () {
 	for (f in fadeDone) {
 		delete self.crossFades[fadeDone[f]];
 	}
-}
+};
 
 instance.prototype.init_presets = function () {
 	var self = this;
@@ -878,7 +878,7 @@ instance.prototype.init_strips = function () {
 						min: 0,
 						step: 10,
 						max: 60000
-					})
+					});
 				}
 
 				storeActions[fadeID + '_s'].options.push( {
@@ -919,7 +919,7 @@ instance.prototype.init_strips = function () {
 					min: 0,
 					step: 10,
 					max: 60000
-				})
+				});
 
 				storeActions[fadeID + '_r'].order = i;
 
@@ -1053,7 +1053,7 @@ instance.prototype.init_strips = function () {
 						min: 0,
 						step: 10,
 						max: 60000
-					})
+					});
 				}
 
 				storeActions[sendID + '_s'] = {
@@ -1156,7 +1156,7 @@ instance.prototype.init_strips = function () {
 					min: 0,
 					step: 10,
 					max: 60000
-				})
+				});
 			}
 		}
 
@@ -1460,7 +1460,7 @@ instance.prototype.stepsToFader = function (i, steps) {
 	var res = i / ( steps - 1 );
 
 	return Math.floor(res * 10000) / 10000;
-}
+};
 
 instance.prototype.faderToDB = function ( f, steps ) {
 // “f” represents OSC float data. f: [0.0, 1.0]
@@ -1762,7 +1762,7 @@ instance.prototype.setConstants = function() {
 		self.STORE_LOCATION.push( {
 			label: `Global ${i}`,
 			id: `gs_${i2}`
-		})
+		});
 	}
 
 	self.FADER_VALUES = [
@@ -1817,7 +1817,7 @@ instance.prototype.setConstants = function() {
 		{ label: 'FAST FORWARD',        id: '5' },
 		{ label: 'REWIND',              id: '6' }
 	];
-}
+};
 
 instance.prototype.init_actions = function(system) {
 	var self = this;
@@ -2024,7 +2024,7 @@ instance.prototype.action = function(action) {
 					startVal: oldVal,
 					finalVal: r,
 					atStep: 1
-				}
+				};
 				// start the xfade
 				r = oldVal + xDelta;
 			}
@@ -2034,7 +2034,7 @@ instance.prototype.action = function(action) {
 	}
 
 	function setToggle(cmd, opt) {
-		return 2 == parseInt(opt) ? 1-self.xStat[cmd].isOn : parseInt(opt)
+		return 2 == parseInt(opt) ? 1-self.xStat[cmd].isOn : parseInt(opt);
 	}
 
 	switch (action.action){
