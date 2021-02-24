@@ -690,7 +690,7 @@ instance.prototype.init_strips = function () {
 		}
 
 		// add new channel type to dropdown choices
-		if (fadeID in fadeActions) {
+		if (fadeActions[fadeID] !== undefined) {
 			fadeActions[fadeID].options[0].choices.push({
 				id:    chID + '/',
 				label: stripDef[i].description + " " + stripDef[i].min + "-" + stripDef[i].max
@@ -929,7 +929,7 @@ instance.prototype.init_strips = function () {
 		// add channel type to send actions
 		if (stripDef[i].hasLevel) {
 			sendID = 'send';
-			if (sendID in sendActions) {
+			if (sendActions[sendID] !== undefined) {
 				sendActions[sendID].options[0].choices.push({
 					id:    chID + '/',
 					label: sendLabel(stripDef[i].description, stripDef[i].min, stripDef[i].max)
@@ -1503,7 +1503,7 @@ instance.prototype.init_osc = function() {
 			var leaf = node.split('/').pop();
 
 			// debug("received ", message, "from", info);
-			if (node in self.xStat) {
+			if (self.xStat[node] !== undefined) {
 				var v = args[0].value;
 				switch (leaf) {
 				case 'on':
