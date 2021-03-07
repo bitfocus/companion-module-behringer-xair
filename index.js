@@ -38,6 +38,8 @@ function instance(system, id, config) {
 	self.fLevels[161] = [];
 	self.blinkingFB = {};
 	self.crossFades = {};
+	self.PollCount = 9;
+	self.PollTimeout = 400;
 	self.needStats = true;
 
 	self.setConstants();
@@ -690,7 +692,7 @@ instance.prototype.init_strips = function () {
 		}
 
 		// add new channel type to dropdown choices
-		if (fadeID in fadeActions) {
+		if (fadeActions[fadeID] !== undefined) {
 			fadeActions[fadeID].options[0].choices.push({
 				id:    chID + '/',
 				label: stripDef[i].description + " " + stripDef[i].min + "-" + stripDef[i].max
@@ -929,7 +931,7 @@ instance.prototype.init_strips = function () {
 		// add channel type to send actions
 		if (stripDef[i].hasLevel) {
 			sendID = 'send';
-			if (sendID in sendActions) {
+			if (sendActions[sendID] !== undefined) {
 				sendActions[sendID].options[0].choices.push({
 					id:    chID + '/',
 					label: sendLabel(stripDef[i].description, stripDef[i].min, stripDef[i].max)
@@ -1422,7 +1424,7 @@ instance.prototype.pollStats = function () {
 	var stillNeed = false;
 	var counter = 0;
 	var timeNow = Date.now();
-	var timeOut = timeNow - 100;
+	var timeOut = timeNow - self.PollTimeout;
 	var id;
 
 	for (id in self.xStat) {
@@ -1433,7 +1435,7 @@ instance.prototype.pollStats = function () {
 				self.debug("sending " + id);
 				self.xStat[id].polled = timeNow;
 				counter++;
-				if (counter > 5) {
+				if (counter > self.PollCount) {
 					break;
 				}
 			}
@@ -1442,6 +1444,9 @@ instance.prototype.pollStats = function () {
 
 	if (!stillNeed) {
 		self.status(self.STATUS_OK,"Mixer Status loaded");
+		var c = Object.keys(self.xStat).length;
+		var d = (timeNow - self.timeStart) / 1000;
+		self.log('info', 'Sync complete (' + c + '@' + (c / d).toFixed(1) + ')');
 	}
 	self.needStats = stillNeed;
 };
@@ -1453,6 +1458,7 @@ instance.prototype.firstPoll = function () {
 	self.sendOSC('/xinfo',[]);
 	self.sendOSC('/-snap/name',[]);
 	self.sendOSC('/-snap/index',[]);
+	self.timeStart = Date.now();
 	self.pollStats();
 	self.pulse();
 };
@@ -1503,7 +1509,7 @@ instance.prototype.init_osc = function() {
 			var leaf = node.split('/').pop();
 
 			// debug("received ", message, "from", info);
-			if (node in self.xStat) {
+			if (self.xStat[node] !== undefined) {
 				var v = args[0].value;
 				switch (leaf) {
 				case 'on':
@@ -1576,6 +1582,7 @@ instance.prototype.init_osc = function() {
 
 		self.oscPort.on('ready', function() {
 			self.status(self.STATUS_WARNING,"Loading status");
+			self.log('info', 'Sync started');
 			self.firstPoll();
 			self.heartbeat = setInterval( function () { self.pulse(); }, 9500);
 			self.blinker = setInterval( function() { self.blink(); }, 1000);
@@ -1983,12 +1990,13 @@ instance.prototype.action = function(action) {
 	// returns a 'new' float value
 	// or undefined for store or crossfade
 	function fadeTo(cmd, opt) {
+		var stat = self.xStat[cmd]
 		var node = cmd.split('/').pop();
 		var opTicks = parseInt(opt.ticks);
-		var steps = self.xStat[cmd].fSteps;
+		var steps = stat.fSteps;
 		var span = parseFloat(opt.duration);
-		var oldVal = self.xStat[cmd][node];
-		var oldIdx = self.xStat[cmd].idx;
+		var oldVal = stat[node];
+		var oldIdx = stat.idx;
 		var byVal = opTicks * steps / 100;
 		var newIdx = Math.min(steps-1,Math.max(0, oldIdx + Math.round(byVal)));
 		var slot = opt.store == 'me' ? cmd : opt.store;
@@ -2005,7 +2013,7 @@ instance.prototype.action = function(action) {
 			break;
 			case '_s':			// store
 				if (slot) {		// sanity check
-					self.tempStore[slot] = self.xStat[cmd][node];
+					self.tempStore[slot] = stat[node];
 				}
 				r = -1;
 				// the 'store' actions are internal to this module only
