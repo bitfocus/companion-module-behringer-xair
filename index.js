@@ -1498,10 +1498,10 @@ instance.prototype.init_osc = function() {
                         self.xStat[node].isOn = (v == 1);
                         self.checkFeedbacks(self.xStat[node].fbID);
                         fds = node.split('/');
-                        if (fds[2] < 10) {
+                        if (fds[2] < 10 && fds[2] > 0) {
                             crl = fds[2].substring(1);
                             self.setVariable('f_ch' + crl + '_m', v);
-                        } else {
+                        } else if (fds[2] >= 10 && fds[2] <= 16) {
                             self.setVariable('f_ch' + fds[2] + '_m', v);
                         }
                         break;
