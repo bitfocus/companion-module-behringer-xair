@@ -3,7 +3,7 @@
 	"legacy": [
 		"xair"
 	],
-	"version": "1.6.3",
+	"version": "1.6.4",
 	"api_version": "1.0.0",
 	"keywords": [
 		"Audio","Mixer","Console"

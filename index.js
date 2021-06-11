@@ -10,10 +10,9 @@ function instance(system, id, config) {
 	var self = this;
 	var po = 0;
 
-	self.currentSnapshot = {
-		name: '',
-		index: 0
-	};
+	self.snapshot = [];
+
+	self.currentSnapshot = 0;
 
 	self.myMixer = {
 		name: '',
@@ -67,7 +66,7 @@ instance.GetUpgradeScripts = function() {
 	return [
 		function(context, config, actions, feedbacks) {
 			var changed = false;
-	
+
 			for (var k in actions) {
 				var action = actions[k];
 
@@ -87,6 +86,16 @@ instance.GetUpgradeScripts = function() {
 			return changed;
 		}
 	]
+}
+
+function bx_pad2(num,len) {
+	len = len || 2;
+	var s = "00" + num;
+	return s.substr(s.length - len);
+}
+
+function bx_unslash(s) {
+	return s.split('/').join('_');
 }
 
 
@@ -110,13 +119,14 @@ instance.prototype.init = function() {
 	// cross-fade steps per second
 	self.fadeResolution = 20;
 
-	self.init_osc();
 	self.init_strips();
 	self.init_solos();
 	self.init_actions();
+	self.init_snaps();
 	self.init_variables();
 	self.init_feedbacks();
 	self.init_presets();
+	self.init_osc();
 	debug(Object.keys(self.xStat).length + " status addresses loaded");
 };
 
@@ -256,6 +266,33 @@ instance.prototype.init_presets = function () {
 	self.setPresetDefinitions(presets);
 };
 
+
+instance.prototype.init_snaps = function () {
+	var self = this;
+	var snapVars = [];
+
+	for (var s = 1; s <= 64; s++) {
+		var c = bx_pad2(s);
+		var theID = `/-snap/${c}/name`;
+		var fID = 's_name_' + c;
+		self.fbToStat[fID] = theID;
+		self.xStat[theID] = {
+			name: '#' + c,
+			defaultName: '#' + c,
+			valid: false,
+			fbID: fID,
+			polled: 0
+		};
+		snapVars.push({
+			label: "Snapshot " + c + " Name",
+			name: fID
+		});
+		self.snapshot[s] = theID;
+	}
+	self.variableDefs.push(...snapVars);
+}
+
+
 instance.prototype.init_solos = function () {
 	var self = this;
 
@@ -290,7 +327,7 @@ instance.prototype.init_solos = function () {
 					options: []
 				};
 				if (ch.min == ch.max) {
-					c = ('00' + (ch.min + ch.offset)).slice(-2);
+					c = bx_pad2(ch.min + ch.offset);
 					self.fbToStat[soloID] = pfx + c;
 					stat[pfx + c] = {
 						fbID: soloID, //+ '_' + c,
@@ -301,7 +338,7 @@ instance.prototype.init_solos = function () {
 					};
 				} else {
 					for (i = ch.min; i<=ch.max; i++) {
-						c = ('00' + (i + ch.offset)).slice(-2);
+						c = bx_pad2(i + ch.offset);
 						self.fbToStat[soloID + i] = pfx + c;
 						stat[pfx + c] = {
 							fbID: soloID, // + '_' + c,
@@ -589,10 +626,6 @@ instance.prototype.init_strips = function () {
 
 	function capFirst(string) {
 		return string.charAt(0).toUpperCase() + string.slice(1);
-	}
-
-	function unslash(s) {
-		return s.split('/').join('_');
 	}
 
 	function sendLabel(d, min, max) {
@@ -1170,7 +1203,7 @@ instance.prototype.init_strips = function () {
 				polled: 0
 			};
 			theID = chID + fadeSfx;
-			fID = 'f_' + unslash(fbID);
+			fID = 'f_' + bx_unslash(fbID);
 			self.fbToStat[fID] = theID;
 			stat[theID] = {
 				fader: 0.0,
@@ -1190,7 +1223,7 @@ instance.prototype.init_strips = function () {
 			});
 			if ('' != labelSfx) {
 				theID = chID + labelSfx + "/name";
-				fID = 'l_' + unslash(fbID);
+				fID = 'l_' + bx_unslash(fbID);
 				self.fbToStat[fID] = theID;
 				stat[theID] = {
 					name: fbID,
@@ -1204,7 +1237,7 @@ instance.prototype.init_strips = function () {
 					name: fID
 				});
 				theID = chID + labelSfx + "/color";
-				fID = 'c_' + unslash(fbID);
+				fID = 'c_' + bx_unslash(fbID);
 				self.fbToStat[fID] = theID;
 				stat[theID] = {
 					color: 0,
@@ -1217,9 +1250,9 @@ instance.prototype.init_strips = function () {
 				for (b = 1; b<11; b++) {
 					bOrF = (b < 7 ? 'b' : 'f');
 					sChan = (b < 7 ? b : b-6);
-					theID = chID + '/mix/' + ('00' + b).slice(-2) + '/level';
+					theID = chID + '/mix/' + bx_pad2(b) + '/level';
 					sendID = (b<7 ? " Bus " + b : " FX " + (b - 6) );
-					fID = 's_' + unslash(fbID) + c + '_' + bOrF + sChan;
+					fID = 's_' + bx_unslash(fbID) + c + '_' + bOrF + sChan;
 					self.fbToStat[fID] = theID;
 					stat[theID] = {
 						level: 0.0,
@@ -1241,7 +1274,7 @@ instance.prototype.init_strips = function () {
 			}
 		} else {
 			for (c = stripDef[i].min; c <= stripDef[i].max; c++) {
-				theID = chID + '/' + ('00' + c).slice(-d) + muteSfx;
+				theID = chID + '/' + bx_pad2(c,d) + muteSfx;
 				fID = fbID + '_' + c;
 				self.fbToStat[fID] = theID;
 				stat[theID] = {
@@ -1252,8 +1285,8 @@ instance.prototype.init_strips = function () {
 					polled: 0
 				};
 				if ('' != fadeSfx) {
-					theID = chID  + '/' + ('00' + c).slice(-d) + fadeSfx;
-					fID = 'f_' + unslash(fbID) + c;
+					theID = chID  + '/' + bx_pad2(c,d) + fadeSfx;
+					fID = 'f_' + bx_unslash(fbID) + c;
 					self.fbToStat[fID] = theID;
 					stat[theID] = {
 						fader: 0.0,
@@ -1275,9 +1308,9 @@ instance.prototype.init_strips = function () {
 						for (b = 1; b<11; b++) {
 							bOrF = (b < 7 ? 'b' : 'f');
 							sChan = (b < 7 ? b : b-6);
-							theID = chID + '/' + ('00' + c).slice(-d) + '/mix/' + ('00' + b).slice(-2) + '/level';
+							theID = chID + '/' + bx_pad2(c,d) + '/mix/' + bx_pad2(b) + '/level';
 							sendID = (b<7 ? " Bus " + b : " FX " + (b - 6) );
-							fID = 's_' + unslash(fbID) + c + '_' + bOrF + sChan;
+							fID = 's_' + bx_unslash(fbID) + c + '_' + bOrF + sChan;
 							self.fbToStat[fID] = theID;
 							stat[theID] = {
 								level: 0.0,
@@ -1299,8 +1332,8 @@ instance.prototype.init_strips = function () {
 					}
 				}
 				if ('' != labelSfx) {
-					theID = chID + '/' + ('00' + c).slice(-d) + labelSfx + "/name";
-					fID = 'l_' + unslash(fbID) + c;
+					theID = chID + '/' + bx_pad2(c,d) + labelSfx + "/name";
+					fID = 'l_' + bx_unslash(fbID) + c;
 					self.fbToStat[fID] = theID;
 					stat[theID] = {
 						name: fbID + c,
@@ -1313,13 +1346,13 @@ instance.prototype.init_strips = function () {
 						label: stripDef[i].description + " " + c + " Label",
 						name: fID
 					});
-					theID = chID + '/' + ('00' + c).slice(-d) + labelSfx + "/color";
-					fID = 'c_' + unslash(fbID) + c;
+					theID = chID + '/' + bx_pad2(c,d) + labelSfx + "/color";
+					fID = 'c_' + bx_unslash(fbID) + c;
 					self.fbToStat[fID] = theID;
 					stat[theID] = {
 						color: 0,
 						valid: false,
-						fbID: 'c_' + unslash(fbID),
+						fbID: 'c_' + bx_unslash(fbID),
 						polled: 0
 					};
 				}
@@ -1375,7 +1408,7 @@ instance.prototype.init_strips = function () {
 		// channel color feedbacks
 		if (stripDef[i].hasOn) {
 			fbDescription = stripDef[i].description + " label";
-			var cID = 'c_' + unslash(fbID);
+			var cID = 'c_' + bx_unslash(fbID);
 			colorFeedbacks[cID] = {
 				label: 		 "Color of " + fbDescription,
 				description: "Use button colors from " + fbDescription,
@@ -1453,8 +1486,8 @@ instance.prototype.firstPoll = function () {
 	var id;
 
 	self.sendOSC('/xinfo',[]);
-	self.sendOSC('/-snap/name',[]);
 	self.sendOSC('/-snap/index',[]);
+	self.sendOSC('/-snap/name',[]);
 	self.timeStart = Date.now();
 	self.pollStats();
 	self.pulse();
@@ -1565,12 +1598,24 @@ instance.prototype.init_osc = function() {
 				self.setVariable('m_model', self.myMixer.model);
 				self.setVariable('m_fw', self.myMixer.fw);
 			} else if (node.match(/^\/\-snap\/name$/)) {
-				self.currentSnapshot.name = args[0].value;
-				self.setVariable('s_name', self.currentSnapshot.name);
+				var n = args[0].value;
+				self.snapshot[self.currentSnapshot].name = n;
+				self.setVariable('s_name', n);
+//				self.setVariable('s_name_' + bx_pad2(self.currentSnapshot), n);
 			} else if (node.match(/^\/\-snap\/index$/)) {
-				self.currentSnapshot.index = parseInt(args[0].value);
-				self.setVariable('s_index', self.currentSnapshot.index);
+				var s = parseInt(args[0].value);
+				var n = self.xStat[self.snapshot[s]].name;
+				self.currentSnapshot = s;
+				self.setVariable('s_index', s);
 				self.checkFeedbacks('snap_color');
+				self.setVariable('s_name', n);
+				self.setVariable('s_name_' + bx_pad2(s), n);
+			//	self.sendOSC('/-snap/name',[]);
+				self.sendOSC('/-snap/' + bx_pad2(s) + '/name',[]);
+			} else if (node.match(/^\/\-snap\/\d\d\/name$/)) {
+				var s;
+				self.snapshot[s] = arg[0];
+				self.setVariable(`s_name_${s}`, arg[0]);
 			}
 			// else {
 			// 	debug(message.address, args);
@@ -1689,7 +1734,7 @@ instance.prototype.init_feedbacks = function() {
 				}
 			],
 			callback: function(feedback, bank) {
-				if (feedback.options.theSnap == self.currentSnapshot.index) {
+				if (feedback.options.theSnap == self.currentSnapshot) {
 					return { color: feedback.options.fg, bgcolor: feedback.options.bg };
 				}
 			}
@@ -1764,7 +1809,7 @@ instance.prototype.setConstants = function() {
 	self.STORE_LOCATION = [];
 
 	for (var i = 1; i <=10; i++) {
-		var i2 = ('0' + i.toString()).slice(-2);
+		var i2 = bx_pad2(i);
 
 		self.STORE_LOCATION.push( {
 			label: `Global ${i}`,
@@ -1954,6 +1999,21 @@ instance.prototype.init_actions = function(system) {
 				}
 
 			]
+		},
+
+		'next_snap':     {
+			label:     'Load Next Console Snapshot',
+			options: [ ]
+		},
+
+		'prev_snap':     {
+			label:     'Load Prior Console Snapshot',
+			options: [ ]
+		},
+
+		'save_snap':     {
+			label:     'Save Current Console Snapshot',
+			options: [ ]
 		},
 
 		'tape':     {
@@ -2190,7 +2250,7 @@ instance.prototype.action = function(action) {
 		case 'solosw_lr':
 		case 'solosw_dca':
 			nVal = (opt.num ? opt.num : 1);
-			cmd = "/-stat/solosw/" + ('00' + (self.soloOffset[action.action] + nVal)).slice(-2);
+			cmd = "/-stat/solosw/" + bx_pad2(self.soloOffset[action.action] + nVal);
 			arg = {
 				type: 'i',
 				value: setToggle(cmd, opt.solo)
@@ -2307,6 +2367,30 @@ instance.prototype.action = function(action) {
 				value: parseInt(opt.snap)
 			};
 			cmd = '/-snap/load';
+		break;
+
+		case 'next_snap':
+			arg = {
+				type: 'i',
+				value: Math.min(++self.currentSnapshot,64)
+			};
+			cmd = '/-snap/load';
+		break;
+
+		case 'prev_snap':
+			arg = {
+				type: 'i',
+				value: Math.max(--self.currentSnapshot,1)
+			};
+			cmd = '/-snap/load';
+		break;
+
+		case 'save_snap':
+			arg = {
+				type: 'i',
+				value: self.currentSnapshot
+			};
+			cmd = '/-snap/save';
 		break;
 
 		case 'tape':

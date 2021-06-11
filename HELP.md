@@ -29,6 +29,9 @@ Solo Dim | Dims the Solo output level to the value configured in the console.
 Solo Mute | Mutes the Solo output
 Solo Mono | Controls the Mono mix-down of the Solo output
 Load Console Snapshot | Loads the given Snapshot from the consoles internal Snapshot list 1-64
+Load Previous Snapshot | Loads the previous (numerical) snapshot **see notes*
+Load Next Snapshot | Loads the next (numerical) snapshot **see notes*
+Save Current Snapshot | Saves/overwrites the current snapshot (NO CONFIRMATION) **see notes*
 Tape Operation | Stop,Play,PlayPause,Record,RecordPause,Fast Forward,Rewind of the tape Deck
 
 **Note *mute and slolo*:** All mute and solo actions also have a Toggle option that inverts the current state of the board channel.
@@ -37,6 +40,7 @@ Tape Operation | Stop,Play,PlayPause,Record,RecordPause,Fast Forward,Rewind of t
 
 **Note *Storage and Recall*:** Each channel or bus send has one save value. Recall will only restore the last value saved. There are also 10 Global slots available to store a value that may be recalled to any channel. Recalling an empty slot will have no effect.
 
+**Note *Snapshots*:** Previous/Next Snapshot commands do not verify that numbered snapshot exists. The Save snapshot function does NOT ask for confirmation before saving/overwriting.
 
 ## Dynamic Variables
 Variable | Description
@@ -46,6 +50,7 @@ Variable | Description
 **$(INSTANCENAME:m_fw)** | Mixer Firmware
 **$(INSTANCENAME:s_name)** | Current Snapshot Name
 **$(INSTANCENAME:s_index)** | Current Snapshot Number
+**$(INSTANCENAME:s_name_{num})** | Name of Snapshot {num} **see notes*
 **$(INSTANCENAME:l_lr)** | Label on LR/Main
 **$(INSTANCENAME:l_rtn_aux)** | Label on USB/Aux return
 **$(INSTANCENAME:l_ch#)** | Label on Channel #
@@ -70,9 +75,11 @@ Variable | Description
 **$(INSTANCENAME:f_solo_d)** | Solo (monitor) output level dB
 **$(INSTANCENAME:f_solo_p)** | Solo (monitor) output level Percent
 
+**Note *Snapshot numbers*:** Replace {num} with the desired 2-digit snapshot number: $(xair:s_name_04). An empty snapshot will have a default name of '#{num}': #04.
+
 
 ## Feedback
-Variable | Description
+Feedback | Description
 -----------------|---------------
 **Color when Current Snapshot** | Sets the button color if the Selected snapshot is loaded
 **Color when Channel muted** | Sets the button color if the selected channel is muted (Channel/Bus/DCA/FX send/FX return)
