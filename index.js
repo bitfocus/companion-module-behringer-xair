@@ -2370,17 +2370,21 @@ instance.prototype.action = function(action) {
 		break;
 
 		case 'next_snap':
+			nVal = self.currentSnapshot;
+			nVal = Math.min(++nVal, 64)
 			arg = {
 				type: 'i',
-				value: Math.min(++self.currentSnapshot,64)
+				value: nVal
 			};
 			cmd = '/-snap/load';
 		break;
 
 		case 'prev_snap':
+			nVal = self.currentSnapshot;
+			nVal = Math.max(--nVal,1);
 			arg = {
 				type: 'i',
-				value: Math.max(--self.currentSnapshot,1)
+				value: nVal
 			};
 			cmd = '/-snap/load';
 		break;

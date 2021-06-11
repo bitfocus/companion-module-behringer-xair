@@ -40,7 +40,7 @@ Tape Operation | Stop,Play,PlayPause,Record,RecordPause,Fast Forward,Rewind of t
 
 **Note *Storage and Recall*:** Each channel or bus send has one save value. Recall will only restore the last value saved. There are also 10 Global slots available to store a value that may be recalled to any channel. Recalling an empty slot will have no effect.
 
-**Note *Snapshots*:** Previous/Next Snapshot commands do not verify that numbered snapshot exists. The Save snapshot function does NOT ask for confirmation before saving/overwriting.
+**Note *Snapshots*:** If the Previous/Next numbered Snapshot is empty, the mixer will not change snapshots. The Save snapshot function does NOT ask for confirmation before saving/overwriting.
 
 ## Dynamic Variables
 Variable | Description
@@ -75,30 +75,32 @@ Variable | Description
 **$(INSTANCENAME:f_solo_d)** | Solo (monitor) output level dB
 **$(INSTANCENAME:f_solo_p)** | Solo (monitor) output level Percent
 
-**Note *Snapshot numbers*:** Replace {num} with the desired 2-digit snapshot number: $(xair:s_name_04). An empty snapshot will have a default name of '#{num}': #04.
+**Note *Snapshot numbers*:** Replace {num} with the desired 2-digit snapshot number: $(xair:s_name_04). A snapshot with no name will have a default name of '#{num}': #04 (it is probably empty).
 
 
 ## Feedback
 Feedback | Description
 -----------------|---------------
-**Color when Current Snapshot** | Sets the button color if the Selected snapshot is loaded
-**Color when Channel muted** | Sets the button color if the selected channel is muted (Channel/Bus/DCA/FX send/FX return)
-**Color when Main LR muted** | Sets the button color if the Main LR is muted
-**Color when USB/Aux in muted** | Sets the button color if the USB/Aux in is muted
-**Color when Mute Group on** | Sets the button color if the selected Mute Group is on
+**Color when Current Snapshot** *| Sets the button color if the Selected snapshot is loaded
+**Color when Channel muted** *| Sets the button color if the selected channel is muted (Channel/Bus/DCA/FX send/FX return)
+**Color when Main LR muted** *| Sets the button color if the Main LR is muted
+**Color when USB/Aux in muted** *| Sets the button color if the USB/Aux in is muted
+**Color when Mute Group on** *| Sets the button color if the selected Mute Group is on
 **Color of Channel label** | Sets the button color to match the seleted channel (Channel/Bus/DCA/FX send/FX return) label
 **Color of Main LR label** | Sets the button color to match the Main LR label
 **Color of USB/Aux label** | Sets the button color to match the USB/Aux label
-**Indicate Channel Solo** | Changes the button when (Channel/Bus/DCA/FX send/FX return) Solo on
-**Indicate Main LR Solo** | Changes the button when Main LR Solo on
-**Indicate USB/Aux Solo** | Changes the button when USB/Aux Solo on
-**Color when Solo Mute** | Sets the button color when the Solo output is muted
-**Color when Solo Mono** | Sets the button color when the Solo output is mono
-**Color when Solo Dim** | Sets the button color when the Solo output is dimmed
+**Indicate Channel Solo** *| Changes the button when (Channel/Bus/DCA/FX send/FX return) Solo on
+**Indicate Main LR Solo** *| Changes the button when Main LR Solo on
+**Indicate USB/Aux Solo** *| Changes the button when USB/Aux Solo on
+**Color when Solo Mute** *| Sets the button color when the Solo output is muted
+**Color when Solo Mono** *| Sets the button color when the Solo output is mono
+**Color when Solo Dim** *| Sets the button color when the Solo output is dimmed
 **Color when Any Solo Active** | Sets the button color when 'Clr Solo' is active
 
 
 ## Notes
+\* Starred feedbacks are implemented as boolean (on/off) style and can be used in triggers.
+
 Channel ranges are maximums (compatible with the X18). If you have an X12 or X16 invalid channels are ignored.
 
 Solo Feedback indicator changes the button color to white on black with an overlay:<br>
