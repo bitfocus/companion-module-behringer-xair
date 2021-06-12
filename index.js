@@ -46,9 +46,10 @@ function instance(system, id, config) {
 	// super-constructor
 	instance_skel.apply(this, arguments);
 
-	if (process.env.DEVELOPER) {
-		self.config._configIdx = -1;
-	}
+	// this no longer works :(
+	// if (process.env.DEVELOPER) {
+	// 	self.config._configIdx = -1;
+	// }
 
 	// each instance needs a separate local port
 	id.split('').forEach(function (c) {
@@ -63,6 +64,36 @@ function instance(system, id, config) {
 }
 
 instance.GetUpgradeScripts = function() {
+	var fbBoolList = {};
+
+	// generate list of feedback ids
+	stripDef.map(item => {
+		fbBoolList[item.id] = true;
+   	} );
+
+	soloDef.map(item => {
+		if (item.id != 'action') {
+			item.cmdMap.map(cmd => {
+				if (!cmd.isFader) {
+					if (item.id == 'config') {
+						fbBoolList[`solo_${cmd.actID}`] = true;
+					} else {
+						fbBoolList[`solosw_${cmd.actID}`] = {
+							bg: 'bgcolor',
+							fg: 'color',
+							png64: 'png64'
+						}
+					}
+				}
+			})
+		}
+	});
+
+	// grab these values for later
+	var bg = this.prototype.rgb(0,0,0);
+	var fg = this.prototype.rgb(255,255,255);
+	var icon = this.prototype.ICON_SOLO;
+
 	return [
 		function(context, config, actions, feedbacks) {
 			var changed = false;
@@ -81,6 +112,31 @@ instance.GetUpgradeScripts = function() {
 						action.options.mute = '1';
 						changed = true;
 					}
+				}
+			}
+			return changed;
+		},
+
+		instance_skel.CreateConvertToBooleanFeedbackUpgradeScript({
+
+			...fbBoolList
+			// 'ch': true,
+			// 'set_output': true,
+			// List as many feedback types as you like
+		}),
+
+		function(context, config, actions, feedbacks) {
+			var changed = false;
+
+			for (var k in feedbacks) {
+				var fb = feedbacks[k];
+				if (fb.type.match(/^solosw_/) && (Object.keys(fb.style).length == 0)) {
+					fb.style = {
+						color: fg,
+						bgcolor: bg,
+						png64: icon
+					};
+					changed = true;
 				}
 			}
 			return changed;
@@ -374,8 +430,9 @@ instance.prototype.init_solos = function () {
 				// solo feedback defs
 				fbDescription = "Solo " + ch.description + " On";
 				soloFeedbacks[soloID] = {
-					label: 		 fbDescription,
-					description: "Indicate when " + fbDescription,
+					type: 'boolean',
+					label: 		 "Indicate " + fbDescription,
+					description: "Indicate on button when " + fbDescription,
 					options: [
 						// {
 						// 	type: 'colorpicker',
@@ -390,6 +447,11 @@ instance.prototype.init_solos = function () {
 						// 	default: self.rgb(96,96,0)
 						// },
 					],
+					style: {
+						color: self.rgb(255,255,255),
+						bgcolor: self.rgb(0,0,0),
+						png64: self.ICON_SOLO
+					},
 					callback: function(feedback, bank) {
 						var theChannel = feedback.options.theChannel;
 						var fbType = feedback.type;
@@ -399,9 +461,10 @@ instance.prototype.init_solos = function () {
 						} else if ( self.fbToStat[fbType] ) {
 							stat = self.xStat[self.fbToStat[fbType]];
 						}
-						if (stat.isOn) {
-							return { color: 16777215, bgcolor: 0, png64: self.ICON_SOLO };
-						}
+						return stat.isOn;
+						// if (stat.isOn) {
+						// 	return { color: 16777215, bgcolor: 0, png64: self.ICON_SOLO };
+						// }
 					}
 				};
 				if (ch.min != ch.max) {
@@ -483,28 +546,34 @@ instance.prototype.init_solos = function () {
 					} );
 					stat[c].isOn = false;
 					soloFeedbacks[actID] = {
-						label: 		 "Solo " + ch.description + " on",
-						description: "Color on Solo " + ch.description,
+						type: 'boolean',
+						label: 		 "Indicate Solo " + ch.description + " on",
+						description: "Indicate on button when Solo " + ch.description,
 						options: [
-							{
-								type: 'colorpicker',
-								label: 'Foreground color',
-								id: 'fg',
-								default: '16777215'
-							},
-							{
-								type: 'colorpicker',
-								label: 'Background color',
-								id: 'bg',
-								default: self.rgb.apply(this, ch.bg)
-							},
+							// {
+							// 	type: 'colorpicker',
+							// 	label: 'Foreground color',
+							// 	id: 'fg',
+							// 	default: '16777215'
+							// },
+							// {
+							// 	type: 'colorpicker',
+							// 	label: 'Background color',
+							// 	id: 'bg',
+							// 	default: self.rgb.apply(this, ch.bg)
+							// },
 						],
+						style: {
+							color: self.rgb(255,255,255),
+							bgcolor: self.rgb.apply(this, ch.bg)
+						},
 						callback: function(feedback, bank) {
 							var fbType = feedback.type;
 							var stat = self.xStat[self.fbToStat[fbType]];
-							if (stat.isOn) {
-								return { color: feedback.options.fg, bgcolor: feedback.options.bg };
-							}
+							return stat.isOn;
+							// if (stat.isOn) {
+							// 	return { color: feedback.options.fg, bgcolor: feedback.options.bg };
+							// }
 						}
 					};
 				}
@@ -1362,22 +1431,27 @@ instance.prototype.init_strips = function () {
 		// mute feedback defs
 		fbDescription = stripDef[i].description + " " + (stripDef[i].hasOn ? "Muted" : "On");
 		muteFeedbacks[fbID] = {
-			label: 		 "Color when " + fbDescription,
-			description: "Set button colors when " + fbDescription,
+			type: 'boolean',
+			label: 		 "Indicate " + fbDescription,
+			description: "Indicate on button when " + fbDescription,
 			options: [
-				{
-					type: 'colorpicker',
-					label: 'Foreground color',
-					id: 'fg',
-					default: '16777215'
-				},
-				{
-					type: 'colorpicker',
-					label: 'Background color',
-					id: 'bg',
-					default: self.rgb(128,0, 0)
-				},
+				// {
+				// 	type: 'colorpicker',
+				// 	label: 'Foreground color',
+				// 	id: 'fg',
+				// 	default: '16777215'
+				// },
+				// {
+				// 	type: 'colorpicker',
+				// 	label: 'Background color',
+				// 	id: 'bg',
+				// 	default: self.rgb(128,0, 0)
+				// },
 			],
+			style: {
+				color: self.rgb(255, 255, 255),
+				bgcolor: self.rgb(128, 0, 0)
+			},
 			callback: function(feedback, bank) {
 				var theChannel = feedback.options.theChannel;
 				var fbType = feedback.type;
@@ -1387,9 +1461,10 @@ instance.prototype.init_strips = function () {
 				} else if ( self.fbToStat[fbType] ) {
 					stat = self.xStat[self.fbToStat[fbType]];
 				}
-				if (stat.isOn != stat.hasOn) {
-					return { color: feedback.options.fg, bgcolor: feedback.options.bg };
-				}
+				return (stat.isOn != stat.hasOn);
+				// if (stat.isOn != stat.hasOn) {
+				// 	return { color: feedback.options.fg, bgcolor: feedback.options.bg };
+				// }
 			}
 		};
 		if (d>0) {
