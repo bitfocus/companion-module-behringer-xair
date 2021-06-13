@@ -66,32 +66,11 @@ function instance(system, id, config) {
 instance.GetUpgradeScripts = function() {
 	var fbBoolList = {};
 
-	// generate list of feedback ids
-	stripDef.map(item => {
-		fbBoolList[item.id] = true;
-   	} );
-
-	soloDef.map(item => {
-		if (item.id != 'action') {
-			item.cmdMap.map(cmd => {
-				if (!cmd.isFader) {
-					if (item.id == 'config') {
-						fbBoolList[`solo_${cmd.actID}`] = true;
-					} else {
-						fbBoolList[`solosw_${cmd.actID}`] = {
-							bg: 'bgcolor',
-							fg: 'color',
-							png64: 'png64'
-						}
-					}
-				}
-			})
-		}
-	});
+	// list of feedback ids with internal '/' (can not be included inline)
+	fbBoolList['rtn/aux'] = true;
+	fbBoolList['config/mute'] = true;
 
 	// grab these values for later
-	var bg = this.prototype.rgb(0,0,0);
-	var fg = this.prototype.rgb(255,255,255);
 	var icon = this.prototype.ICON_SOLO;
 
 	return [
@@ -118,11 +97,23 @@ instance.GetUpgradeScripts = function() {
 		},
 
 		instance_skel.CreateConvertToBooleanFeedbackUpgradeScript({
-
+			solo_mute: true,
+			solo_mono: true,
+			solo_dim: true,
+			rtn: true,
+			lr: true,
+			fxsend: true,
+			dca: true,
+			bus: true,
+			ch: true,
+			solosw_aux: true,
+			solosw_bus: true,
+			solosw_ch: true,
+			solosw_dca: true,
+			solosw_fxr: true,
+			solosw_fxs: true,
+			solosw_lr: true,
 			...fbBoolList
-			// 'ch': true,
-			// 'set_output': true,
-			// List as many feedback types as you like
 		}),
 
 		function(context, config, actions, feedbacks) {
@@ -132,8 +123,8 @@ instance.GetUpgradeScripts = function() {
 				var fb = feedbacks[k];
 				if (fb.type.match(/^solosw_/) && (Object.keys(fb.style).length == 0)) {
 					fb.style = {
-						color: fg,
-						bgcolor: bg,
+						color: context.rgb(255, 255, 255),
+						bgcolor: context.rgb(0, 0, 0),
 						png64: icon
 					};
 					changed = true;
