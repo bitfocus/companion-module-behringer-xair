@@ -262,9 +262,11 @@ instance.prototype.init_presets = function () {
 				{
 					type: 'ch',
 					options: {
-						fg: 16777215,
-						bg: self.rgb(128,0,0),
 						theChannel: 1
+					},
+					style: {
+						color: 16777215,
+						bgcolor: self.rgb(128,0,0)
 					}
 				},
 				{
@@ -291,6 +293,11 @@ instance.prototype.init_presets = function () {
 					options: {
 						num: 1,
 						solo: 2
+					},
+					style: {
+						color: context.rgb(255, 255, 255),
+						bgcolor: context.rgb(0, 0, 0),
+						png64: icon
 					}
 				}
 			],
