@@ -63,12 +63,9 @@ function instance(system, id, config) {
 	return self;
 }
 
-instance.GetUpgradeScripts = function() {
-	var fbBoolList = {};
+// instance.DEVELOPER_forceStartupUpgradeScript = 1;
 
-	// list of feedback ids with internal '/' (can not be included inline)
-	fbBoolList['rtn/aux'] = true;
-	fbBoolList['config/mute'] = true;
+instance.GetUpgradeScripts = function() {
 
 	// grab these values for later
 	var icon = this.prototype.ICON_SOLO;
@@ -113,7 +110,8 @@ instance.GetUpgradeScripts = function() {
 			solosw_fxr: true,
 			solosw_fxs: true,
 			solosw_lr: true,
-			...fbBoolList
+			'rtn/aux': true,
+			'config/mute': true
 		}),
 
 		function(context, config, actions, feedbacks) {
@@ -295,8 +293,8 @@ instance.prototype.init_presets = function () {
 						solo: 2
 					},
 					style: {
-						color: context.rgb(255, 255, 255),
-						bgcolor: context.rgb(0, 0, 0),
+						color: self.rgb(255, 255, 255),
+						bgcolor: self.rgb(0, 0, 0),
 						png64: icon
 					}
 				}
