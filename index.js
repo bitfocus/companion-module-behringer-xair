@@ -295,7 +295,7 @@ instance.prototype.init_presets = function () {
 					style: {
 						color: self.rgb(255, 255, 255),
 						bgcolor: self.rgb(0, 0, 0),
-						png64: icon
+						png64: self.ICON_SOLO
 					}
 				}
 			],
