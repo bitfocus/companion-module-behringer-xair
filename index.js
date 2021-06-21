@@ -46,11 +46,6 @@ function instance(system, id, config) {
 	// super-constructor
 	instance_skel.apply(this, arguments);
 
-	// this no longer works :(
-	// if (process.env.DEVELOPER) {
-	// 	self.config._configIdx = -1;
-	// }
-
 	// each instance needs a separate local port
 	id.split('').forEach(function (c) {
 		po += c.charCodeAt(0);
