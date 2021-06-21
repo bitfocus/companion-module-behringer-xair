@@ -425,18 +425,6 @@ instance.prototype.init_solos = function () {
 					label: 		 "Indicate " + fbDescription,
 					description: "Indicate on button when " + fbDescription,
 					options: [
-						// {
-						// 	type: 'colorpicker',
-						// 	label: 'Foreground color',
-						// 	id: 'fg',
-						// 	default: '16777215'
-						// },
-						// {
-						// 	type: 'colorpicker',
-						// 	label: 'Background color',
-						// 	id: 'bg',
-						// 	default: self.rgb(96,96,0)
-						// },
 					],
 					style: {
 						color: self.rgb(255,255,255),
@@ -453,9 +441,6 @@ instance.prototype.init_solos = function () {
 							stat = self.xStat[self.fbToStat[fbType]];
 						}
 						return stat.isOn;
-						// if (stat.isOn) {
-						// 	return { color: 16777215, bgcolor: 0, png64: self.ICON_SOLO };
-						// }
 					}
 				};
 				if (ch.min != ch.max) {
@@ -541,18 +526,6 @@ instance.prototype.init_solos = function () {
 						label: 		 "Indicate Solo " + ch.description + " on",
 						description: "Indicate on button when Solo " + ch.description,
 						options: [
-							// {
-							// 	type: 'colorpicker',
-							// 	label: 'Foreground color',
-							// 	id: 'fg',
-							// 	default: '16777215'
-							// },
-							// {
-							// 	type: 'colorpicker',
-							// 	label: 'Background color',
-							// 	id: 'bg',
-							// 	default: self.rgb.apply(this, ch.bg)
-							// },
 						],
 						style: {
 							color: self.rgb(255,255,255),
@@ -562,9 +535,6 @@ instance.prototype.init_solos = function () {
 							var fbType = feedback.type;
 							var stat = self.xStat[self.fbToStat[fbType]];
 							return stat.isOn;
-							// if (stat.isOn) {
-							// 	return { color: feedback.options.fg, bgcolor: feedback.options.bg };
-							// }
 						}
 					};
 				}
@@ -1426,18 +1396,6 @@ instance.prototype.init_strips = function () {
 			label: 		 "Indicate " + fbDescription,
 			description: "Indicate on button when " + fbDescription,
 			options: [
-				// {
-				// 	type: 'colorpicker',
-				// 	label: 'Foreground color',
-				// 	id: 'fg',
-				// 	default: '16777215'
-				// },
-				// {
-				// 	type: 'colorpicker',
-				// 	label: 'Background color',
-				// 	id: 'bg',
-				// 	default: self.rgb(128,0, 0)
-				// },
 			],
 			style: {
 				color: self.rgb(255, 255, 255),
@@ -1453,9 +1411,6 @@ instance.prototype.init_strips = function () {
 					stat = self.xStat[self.fbToStat[fbType]];
 				}
 				return (stat.isOn != stat.hasOn);
-				// if (stat.isOn != stat.hasOn) {
-				// 	return { color: feedback.options.fg, bgcolor: feedback.options.bg };
-				// }
 			}
 		};
 		if (d>0) {
@@ -1667,7 +1622,6 @@ instance.prototype.init_osc = function() {
 				var n = args[0].value;
 				self.snapshot[self.currentSnapshot].name = n;
 				self.setVariable('s_name', n);
-//				self.setVariable('s_name_' + bx_pad2(self.currentSnapshot), n);
 			} else if (node.match(/^\/\-snap\/index$/)) {
 				var s = parseInt(args[0].value);
 				var n = self.xStat[self.snapshot[s]].name;
@@ -1676,7 +1630,6 @@ instance.prototype.init_osc = function() {
 				self.checkFeedbacks('snap_color');
 				self.setVariable('s_name', n);
 				self.setVariable('s_name_' + bx_pad2(s), n);
-			//	self.sendOSC('/-snap/name',[]);
 				self.sendOSC('/-snap/' + bx_pad2(s) + '/name',[]);
 			} else if (node.match(/^\/\-snap\/\d\d\/name$/)) {
 				var s;
