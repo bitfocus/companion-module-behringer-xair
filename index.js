@@ -10,10 +10,9 @@ function instance(system, id, config) {
 	var self = this;
 	var po = 0;
 
-	self.currentSnapshot = {
-		name: '',
-		index: 0
-	};
+	self.snapshot = [];
+
+	self.currentSnapshot = 0;
 
 	self.myMixer = {
 		name: '',
@@ -47,10 +46,6 @@ function instance(system, id, config) {
 	// super-constructor
 	instance_skel.apply(this, arguments);
 
-	if (process.env.DEVELOPER) {
-		self.config._configIdx = -1;
-	}
-
 	// each instance needs a separate local port
 	id.split('').forEach(function (c) {
 		po += c.charCodeAt(0);
@@ -63,11 +58,17 @@ function instance(system, id, config) {
 	return self;
 }
 
+// instance.DEVELOPER_forceStartupUpgradeScript = 1;
+
 instance.GetUpgradeScripts = function() {
+
+	// grab these values for later
+	var icon = this.prototype.ICON_SOLO;
+
 	return [
 		function(context, config, actions, feedbacks) {
 			var changed = false;
-	
+
 			for (var k in actions) {
 				var action = actions[k];
 
@@ -85,8 +86,56 @@ instance.GetUpgradeScripts = function() {
 				}
 			}
 			return changed;
+		},
+
+		instance_skel.CreateConvertToBooleanFeedbackUpgradeScript({
+			solo_mute: true,
+			solo_mono: true,
+			solo_dim: true,
+			rtn: true,
+			lr: true,
+			fxsend: true,
+			dca: true,
+			bus: true,
+			ch: true,
+			solosw_aux: true,
+			solosw_bus: true,
+			solosw_ch: true,
+			solosw_dca: true,
+			solosw_fxr: true,
+			solosw_fxs: true,
+			solosw_lr: true,
+			'rtn/aux': true,
+			'config/mute': true
+		}),
+
+		function(context, config, actions, feedbacks) {
+			var changed = false;
+
+			for (var k in feedbacks) {
+				var fb = feedbacks[k];
+				if (fb.type.match(/^solosw_/) && (Object.keys(fb.style).length == 0)) {
+					fb.style = {
+						color: context.rgb(255, 255, 255),
+						bgcolor: context.rgb(0, 0, 0),
+						png64: icon
+					};
+					changed = true;
+				}
+			}
+			return changed;
 		}
 	]
+}
+
+function bx_pad2(num,len) {
+	len = len || 2;
+	var s = "00" + num;
+	return s.substr(s.length - len);
+}
+
+function bx_unslash(s) {
+	return s.split('/').join('_');
 }
 
 
@@ -110,13 +159,14 @@ instance.prototype.init = function() {
 	// cross-fade steps per second
 	self.fadeResolution = 20;
 
-	self.init_osc();
 	self.init_strips();
 	self.init_solos();
 	self.init_actions();
+	self.init_snaps();
 	self.init_variables();
 	self.init_feedbacks();
 	self.init_presets();
+	self.init_osc();
 	debug(Object.keys(self.xStat).length + " status addresses loaded");
 };
 
@@ -205,9 +255,11 @@ instance.prototype.init_presets = function () {
 				{
 					type: 'ch',
 					options: {
-						fg: 16777215,
-						bg: self.rgb(128,0,0),
 						theChannel: 1
+					},
+					style: {
+						color: 16777215,
+						bgcolor: self.rgb(128,0,0)
 					}
 				},
 				{
@@ -234,6 +286,11 @@ instance.prototype.init_presets = function () {
 					options: {
 						num: 1,
 						solo: 2
+					},
+					style: {
+						color: self.rgb(255, 255, 255),
+						bgcolor: self.rgb(0, 0, 0),
+						png64: self.ICON_SOLO
 					}
 				}
 			],
@@ -255,6 +312,33 @@ instance.prototype.init_presets = function () {
 	];
 	self.setPresetDefinitions(presets);
 };
+
+
+instance.prototype.init_snaps = function () {
+	var self = this;
+	var snapVars = [];
+
+	for (var s = 1; s <= 64; s++) {
+		var c = bx_pad2(s);
+		var theID = `/-snap/${c}/name`;
+		var fID = 's_name_' + c;
+		self.fbToStat[fID] = theID;
+		self.xStat[theID] = {
+			name: '#' + c,
+			defaultName: '#' + c,
+			valid: false,
+			fbID: fID,
+			polled: 0
+		};
+		snapVars.push({
+			label: "Snapshot " + c + " Name",
+			name: fID
+		});
+		self.snapshot[s] = theID;
+	}
+	self.variableDefs.push(...snapVars);
+}
+
 
 instance.prototype.init_solos = function () {
 	var self = this;
@@ -290,7 +374,7 @@ instance.prototype.init_solos = function () {
 					options: []
 				};
 				if (ch.min == ch.max) {
-					c = ('00' + (ch.min + ch.offset)).slice(-2);
+					c = bx_pad2(ch.min + ch.offset);
 					self.fbToStat[soloID] = pfx + c;
 					stat[pfx + c] = {
 						fbID: soloID, //+ '_' + c,
@@ -301,7 +385,7 @@ instance.prototype.init_solos = function () {
 					};
 				} else {
 					for (i = ch.min; i<=ch.max; i++) {
-						c = ('00' + (i + ch.offset)).slice(-2);
+						c = bx_pad2(i + ch.offset);
 						self.fbToStat[soloID + i] = pfx + c;
 						stat[pfx + c] = {
 							fbID: soloID, // + '_' + c,
@@ -337,22 +421,16 @@ instance.prototype.init_solos = function () {
 				// solo feedback defs
 				fbDescription = "Solo " + ch.description + " On";
 				soloFeedbacks[soloID] = {
-					label: 		 fbDescription,
-					description: "Indicate when " + fbDescription,
+					type: 'boolean',
+					label: 		 "Indicate " + fbDescription,
+					description: "Indicate on button when " + fbDescription,
 					options: [
-						// {
-						// 	type: 'colorpicker',
-						// 	label: 'Foreground color',
-						// 	id: 'fg',
-						// 	default: '16777215'
-						// },
-						// {
-						// 	type: 'colorpicker',
-						// 	label: 'Background color',
-						// 	id: 'bg',
-						// 	default: self.rgb(96,96,0)
-						// },
 					],
+					style: {
+						color: self.rgb(255,255,255),
+						bgcolor: self.rgb(0,0,0),
+						png64: self.ICON_SOLO
+					},
 					callback: function(feedback, bank) {
 						var theChannel = feedback.options.theChannel;
 						var fbType = feedback.type;
@@ -362,9 +440,7 @@ instance.prototype.init_solos = function () {
 						} else if ( self.fbToStat[fbType] ) {
 							stat = self.xStat[self.fbToStat[fbType]];
 						}
-						if (stat.isOn) {
-							return { color: 16777215, bgcolor: 0, png64: self.ICON_SOLO };
-						}
+						return stat.isOn;
 					}
 				};
 				if (ch.min != ch.max) {
@@ -446,28 +522,19 @@ instance.prototype.init_solos = function () {
 					} );
 					stat[c].isOn = false;
 					soloFeedbacks[actID] = {
-						label: 		 "Solo " + ch.description + " on",
-						description: "Color on Solo " + ch.description,
+						type: 'boolean',
+						label: 		 "Indicate Solo " + ch.description + " on",
+						description: "Indicate on button when Solo " + ch.description,
 						options: [
-							{
-								type: 'colorpicker',
-								label: 'Foreground color',
-								id: 'fg',
-								default: '16777215'
-							},
-							{
-								type: 'colorpicker',
-								label: 'Background color',
-								id: 'bg',
-								default: self.rgb.apply(this, ch.bg)
-							},
 						],
+						style: {
+							color: self.rgb(255,255,255),
+							bgcolor: self.rgb.apply(this, ch.bg)
+						},
 						callback: function(feedback, bank) {
 							var fbType = feedback.type;
 							var stat = self.xStat[self.fbToStat[fbType]];
-							if (stat.isOn) {
-								return { color: feedback.options.fg, bgcolor: feedback.options.bg };
-							}
+							return stat.isOn;
 						}
 					};
 				}
@@ -589,10 +656,6 @@ instance.prototype.init_strips = function () {
 
 	function capFirst(string) {
 		return string.charAt(0).toUpperCase() + string.slice(1);
-	}
-
-	function unslash(s) {
-		return s.split('/').join('_');
 	}
 
 	function sendLabel(d, min, max) {
@@ -1170,7 +1233,7 @@ instance.prototype.init_strips = function () {
 				polled: 0
 			};
 			theID = chID + fadeSfx;
-			fID = 'f_' + unslash(fbID);
+			fID = 'f_' + bx_unslash(fbID);
 			self.fbToStat[fID] = theID;
 			stat[theID] = {
 				fader: 0.0,
@@ -1190,7 +1253,7 @@ instance.prototype.init_strips = function () {
 			});
 			if ('' != labelSfx) {
 				theID = chID + labelSfx + "/name";
-				fID = 'l_' + unslash(fbID);
+				fID = 'l_' + bx_unslash(fbID);
 				self.fbToStat[fID] = theID;
 				stat[theID] = {
 					name: fbID,
@@ -1204,7 +1267,7 @@ instance.prototype.init_strips = function () {
 					name: fID
 				});
 				theID = chID + labelSfx + "/color";
-				fID = 'c_' + unslash(fbID);
+				fID = 'c_' + bx_unslash(fbID);
 				self.fbToStat[fID] = theID;
 				stat[theID] = {
 					color: 0,
@@ -1217,9 +1280,9 @@ instance.prototype.init_strips = function () {
 				for (b = 1; b<11; b++) {
 					bOrF = (b < 7 ? 'b' : 'f');
 					sChan = (b < 7 ? b : b-6);
-					theID = chID + '/mix/' + ('00' + b).slice(-2) + '/level';
+					theID = chID + '/mix/' + bx_pad2(b) + '/level';
 					sendID = (b<7 ? " Bus " + b : " FX " + (b - 6) );
-					fID = 's_' + unslash(fbID) + c + '_' + bOrF + sChan;
+					fID = 's_' + bx_unslash(fbID) + c + '_' + bOrF + sChan;
 					self.fbToStat[fID] = theID;
 					stat[theID] = {
 						level: 0.0,
@@ -1241,7 +1304,7 @@ instance.prototype.init_strips = function () {
 			}
 		} else {
 			for (c = stripDef[i].min; c <= stripDef[i].max; c++) {
-				theID = chID + '/' + ('00' + c).slice(-d) + muteSfx;
+				theID = chID + '/' + bx_pad2(c,d) + muteSfx;
 				fID = fbID + '_' + c;
 				self.fbToStat[fID] = theID;
 				stat[theID] = {
@@ -1252,8 +1315,8 @@ instance.prototype.init_strips = function () {
 					polled: 0
 				};
 				if ('' != fadeSfx) {
-					theID = chID  + '/' + ('00' + c).slice(-d) + fadeSfx;
-					fID = 'f_' + unslash(fbID) + c;
+					theID = chID  + '/' + bx_pad2(c,d) + fadeSfx;
+					fID = 'f_' + bx_unslash(fbID) + c;
 					self.fbToStat[fID] = theID;
 					stat[theID] = {
 						fader: 0.0,
@@ -1275,9 +1338,9 @@ instance.prototype.init_strips = function () {
 						for (b = 1; b<11; b++) {
 							bOrF = (b < 7 ? 'b' : 'f');
 							sChan = (b < 7 ? b : b-6);
-							theID = chID + '/' + ('00' + c).slice(-d) + '/mix/' + ('00' + b).slice(-2) + '/level';
+							theID = chID + '/' + bx_pad2(c,d) + '/mix/' + bx_pad2(b) + '/level';
 							sendID = (b<7 ? " Bus " + b : " FX " + (b - 6) );
-							fID = 's_' + unslash(fbID) + c + '_' + bOrF + sChan;
+							fID = 's_' + bx_unslash(fbID) + c + '_' + bOrF + sChan;
 							self.fbToStat[fID] = theID;
 							stat[theID] = {
 								level: 0.0,
@@ -1299,8 +1362,8 @@ instance.prototype.init_strips = function () {
 					}
 				}
 				if ('' != labelSfx) {
-					theID = chID + '/' + ('00' + c).slice(-d) + labelSfx + "/name";
-					fID = 'l_' + unslash(fbID) + c;
+					theID = chID + '/' + bx_pad2(c,d) + labelSfx + "/name";
+					fID = 'l_' + bx_unslash(fbID) + c;
 					self.fbToStat[fID] = theID;
 					stat[theID] = {
 						name: fbID + c,
@@ -1313,13 +1376,13 @@ instance.prototype.init_strips = function () {
 						label: stripDef[i].description + " " + c + " Label",
 						name: fID
 					});
-					theID = chID + '/' + ('00' + c).slice(-d) + labelSfx + "/color";
-					fID = 'c_' + unslash(fbID) + c;
+					theID = chID + '/' + bx_pad2(c,d) + labelSfx + "/color";
+					fID = 'c_' + bx_unslash(fbID) + c;
 					self.fbToStat[fID] = theID;
 					stat[theID] = {
 						color: 0,
 						valid: false,
-						fbID: 'c_' + unslash(fbID),
+						fbID: 'c_' + bx_unslash(fbID),
 						polled: 0
 					};
 				}
@@ -1329,22 +1392,15 @@ instance.prototype.init_strips = function () {
 		// mute feedback defs
 		fbDescription = stripDef[i].description + " " + (stripDef[i].hasOn ? "Muted" : "On");
 		muteFeedbacks[fbID] = {
-			label: 		 "Color when " + fbDescription,
-			description: "Set button colors when " + fbDescription,
+			type: 'boolean',
+			label: 		 "Indicate " + fbDescription,
+			description: "Indicate on button when " + fbDescription,
 			options: [
-				{
-					type: 'colorpicker',
-					label: 'Foreground color',
-					id: 'fg',
-					default: '16777215'
-				},
-				{
-					type: 'colorpicker',
-					label: 'Background color',
-					id: 'bg',
-					default: self.rgb(128,0, 0)
-				},
 			],
+			style: {
+				color: self.rgb(255, 255, 255),
+				bgcolor: self.rgb(128, 0, 0)
+			},
 			callback: function(feedback, bank) {
 				var theChannel = feedback.options.theChannel;
 				var fbType = feedback.type;
@@ -1354,9 +1410,7 @@ instance.prototype.init_strips = function () {
 				} else if ( self.fbToStat[fbType] ) {
 					stat = self.xStat[self.fbToStat[fbType]];
 				}
-				if (stat.isOn != stat.hasOn) {
-					return { color: feedback.options.fg, bgcolor: feedback.options.bg };
-				}
+				return (stat.isOn != stat.hasOn);
 			}
 		};
 		if (d>0) {
@@ -1375,7 +1429,7 @@ instance.prototype.init_strips = function () {
 		// channel color feedbacks
 		if (stripDef[i].hasOn) {
 			fbDescription = stripDef[i].description + " label";
-			var cID = 'c_' + unslash(fbID);
+			var cID = 'c_' + bx_unslash(fbID);
 			colorFeedbacks[cID] = {
 				label: 		 "Color of " + fbDescription,
 				description: "Use button colors from " + fbDescription,
@@ -1453,8 +1507,8 @@ instance.prototype.firstPoll = function () {
 	var id;
 
 	self.sendOSC('/xinfo',[]);
-	self.sendOSC('/-snap/name',[]);
 	self.sendOSC('/-snap/index',[]);
+	self.sendOSC('/-snap/name',[]);
 	self.timeStart = Date.now();
 	self.pollStats();
 	self.pulse();
@@ -1565,12 +1619,22 @@ instance.prototype.init_osc = function() {
 				self.setVariable('m_model', self.myMixer.model);
 				self.setVariable('m_fw', self.myMixer.fw);
 			} else if (node.match(/^\/\-snap\/name$/)) {
-				self.currentSnapshot.name = args[0].value;
-				self.setVariable('s_name', self.currentSnapshot.name);
+				var n = args[0].value;
+				self.snapshot[self.currentSnapshot].name = n;
+				self.setVariable('s_name', n);
 			} else if (node.match(/^\/\-snap\/index$/)) {
-				self.currentSnapshot.index = parseInt(args[0].value);
-				self.setVariable('s_index', self.currentSnapshot.index);
+				var s = parseInt(args[0].value);
+				var n = self.xStat[self.snapshot[s]].name;
+				self.currentSnapshot = s;
+				self.setVariable('s_index', s);
 				self.checkFeedbacks('snap_color');
+				self.setVariable('s_name', n);
+				self.setVariable('s_name_' + bx_pad2(s), n);
+				self.sendOSC('/-snap/' + bx_pad2(s) + '/name',[]);
+			} else if (node.match(/^\/\-snap\/\d\d\/name$/)) {
+				var s;
+				self.snapshot[s] = arg[0];
+				self.setVariable(`s_name_${s}`, arg[0]);
 			}
 			// else {
 			// 	debug(message.address, args);
@@ -1689,7 +1753,7 @@ instance.prototype.init_feedbacks = function() {
 				}
 			],
 			callback: function(feedback, bank) {
-				if (feedback.options.theSnap == self.currentSnapshot.index) {
+				if (feedback.options.theSnap == self.currentSnapshot) {
 					return { color: feedback.options.fg, bgcolor: feedback.options.bg };
 				}
 			}
@@ -1764,7 +1828,7 @@ instance.prototype.setConstants = function() {
 	self.STORE_LOCATION = [];
 
 	for (var i = 1; i <=10; i++) {
-		var i2 = ('0' + i.toString()).slice(-2);
+		var i2 = bx_pad2(i);
 
 		self.STORE_LOCATION.push( {
 			label: `Global ${i}`,
@@ -1954,6 +2018,21 @@ instance.prototype.init_actions = function(system) {
 				}
 
 			]
+		},
+
+		'next_snap':     {
+			label:     'Load Next Console Snapshot',
+			options: [ ]
+		},
+
+		'prev_snap':     {
+			label:     'Load Prior Console Snapshot',
+			options: [ ]
+		},
+
+		'save_snap':     {
+			label:     'Save Current Console Snapshot',
+			options: [ ]
 		},
 
 		'tape':     {
@@ -2190,7 +2269,7 @@ instance.prototype.action = function(action) {
 		case 'solosw_lr':
 		case 'solosw_dca':
 			nVal = (opt.num ? opt.num : 1);
-			cmd = "/-stat/solosw/" + ('00' + (self.soloOffset[action.action] + nVal)).slice(-2);
+			cmd = "/-stat/solosw/" + bx_pad2(self.soloOffset[action.action] + nVal);
 			arg = {
 				type: 'i',
 				value: setToggle(cmd, opt.solo)
@@ -2307,6 +2386,34 @@ instance.prototype.action = function(action) {
 				value: parseInt(opt.snap)
 			};
 			cmd = '/-snap/load';
+		break;
+
+		case 'next_snap':
+			nVal = self.currentSnapshot;
+			nVal = Math.min(++nVal, 64)
+			arg = {
+				type: 'i',
+				value: nVal
+			};
+			cmd = '/-snap/load';
+		break;
+
+		case 'prev_snap':
+			nVal = self.currentSnapshot;
+			nVal = Math.max(--nVal,1);
+			arg = {
+				type: 'i',
+				value: nVal
+			};
+			cmd = '/-snap/load';
+		break;
+
+		case 'save_snap':
+			arg = {
+				type: 'i',
+				value: self.currentSnapshot
+			};
+			cmd = '/-snap/save';
 		break;
 
 		case 'tape':
