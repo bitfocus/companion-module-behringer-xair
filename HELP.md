@@ -99,7 +99,7 @@ Feedback | Description
 
 
 ## Notes
-\* Starred feedbacks are implemented as boolean (on/off) style and can be used in triggers. These have a **State** option to select which particular state (on/off) to use for the feedback.
+\* Starred feedbacks are implemented as boolean (on/off) style and can be used in triggers. In order to provide an **off** trigger, these have a **State** option to select which particular state (on/off) to use for the feedback. The default style (button colors) is for the **on** state and may not be applicable to the **off** state.
 
 Channel ranges are maximums (compatible with the X18). If you have an X12 or X16 invalid channels are ignored.
 
