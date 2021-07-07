@@ -419,12 +419,22 @@ instance.prototype.init_solos = function () {
 					]
 				} );
 				// solo feedback defs
-				fbDescription = "Solo " + ch.description + " On";
+				fbDescription = "Solo " + ch.description + " status";
 				soloFeedbacks[soloID] = {
 					type: 'boolean',
 					label: 		 "Indicate " + fbDescription,
-					description: "Indicate on button when " + fbDescription,
+					description: "Indicate " + fbDescription + " on button",
 					options: [
+						{
+							type:	'dropdown',
+							label:	'State',
+							id:		'state',
+							default: '1',
+							choices: [
+								{id: '1', label: 'On'},
+								{id: '0', label: 'Off'}
+							]
+						}
 					],
 					style: {
 						color: self.rgb(255,255,255),
@@ -435,12 +445,14 @@ instance.prototype.init_solos = function () {
 						var theChannel = feedback.options.theChannel;
 						var fbType = feedback.type;
 						var stat;
+						var state = feedback.options.state != '0';
+
 						if (theChannel) {
 							stat = self.xStat[self.fbToStat[fbType + theChannel]];
 						} else if ( self.fbToStat[fbType] ) {
 							stat = self.xStat[self.fbToStat[fbType]];
 						}
-						return stat.isOn;
+						return stat.isOn == state;
 					}
 				};
 				if (ch.min != ch.max) {
@@ -521,11 +533,22 @@ instance.prototype.init_solos = function () {
 						]
 					} );
 					stat[c].isOn = false;
+					fbDescription = "Solo " + ch.description + " status";
 					soloFeedbacks[actID] = {
 						type: 'boolean',
-						label: 		 "Indicate Solo " + ch.description + " on",
-						description: "Indicate on button when Solo " + ch.description,
+						label: 		 "Indicate " + fbDescription,
+						description: "Indicate " + fbDescription  + " on button",
 						options: [
+							{
+								type:	'dropdown',
+								label:	'State',
+								id:		'state',
+								default: '1',
+								choices: [
+									{id: '1', label: 'On'},
+									{id: '0', label: 'Off'}
+								]
+							}
 						],
 						style: {
 							color: self.rgb(255,255,255),
@@ -534,7 +557,9 @@ instance.prototype.init_solos = function () {
 						callback: function(feedback, bank) {
 							var fbType = feedback.type;
 							var stat = self.xStat[self.fbToStat[fbType]];
-							return stat.isOn;
+							var state = feedback.options.state != '0';
+
+							return stat.isOn == state;
 						}
 					};
 				}
@@ -1390,12 +1415,22 @@ instance.prototype.init_strips = function () {
 		}
 
 		// mute feedback defs
-		fbDescription = stripDef[i].description + " " + (stripDef[i].hasOn ? "Muted" : "On");
+		fbDescription = stripDef[i].description + " " + (stripDef[i].hasOn ? "Mute" : "") + " status";
 		muteFeedbacks[fbID] = {
 			type: 'boolean',
 			label: 		 "Indicate " + fbDescription,
-			description: "Indicate on button when " + fbDescription,
+			description: "Indicate " + fbDescription + " on button",
 			options: [
+				{
+					type:	'dropdown',
+					label:	'State',
+					id:		'state',
+					default: '1',
+					choices: [
+						{id: '1', label: 'On'},
+						{id: '0', label: 'Off'}
+					]
+				}
 			],
 			style: {
 				color: self.rgb(255, 255, 255),
@@ -1405,12 +1440,14 @@ instance.prototype.init_strips = function () {
 				var theChannel = feedback.options.theChannel;
 				var fbType = feedback.type;
 				var stat;
+				var state = feedback.options.state != '0';
+
 				if (theChannel) {
 					stat = self.xStat[self.fbToStat[fbType + '_' + theChannel]];
 				} else if ( self.fbToStat[fbType] ) {
 					stat = self.xStat[self.fbToStat[fbType]];
 				}
-				return (stat.isOn != stat.hasOn);
+				return (stat.isOn != stat.hasOn) == state;
 			}
 		};
 		if (d>0) {
