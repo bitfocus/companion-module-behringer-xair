@@ -15,6 +15,7 @@ Channel, USB, FX Send, Fx Return, Bus and Main fader set | Sets the level of the
 Channel, USB, FX Send, Fx Return, Bus and Main fader adjust | Adjust the selected Channel, Channel, USB, FX Send, Fx Return, Bus and Main fader up or down by steps **see notes*
 Store Fader Channel, USB, FX Send, Fx Return, Bus and Main | Stores the selected fader value for later recall **see notes*
 Recall Fader Channel, USB, FX Send, Fx Return, Bus and Main | Sets the selected fader to the stored value
+Set State of Insert, Gate, EQ, Compressor, LR send | Turn the selected processing element On or Off
 Channel, USB, FX Send, Fx Return, Bus and Main label | Sets the text label in the scribble strip of the selected Channel, USB, FX Send, Fx Return, Bus and Main
 Channel, USB, FX Send, Fx Return, Bus and Main color | Sets the color of the scribble strip of the selected Channel, USB, FX Send, Fx Return, Bus and Main
 Mute Group | Turns the selected mute group on or off
@@ -34,7 +35,7 @@ Load Next Snapshot | Loads the next (numerical) snapshot **see notes*
 Save Current Snapshot | Saves/overwrites the current snapshot (NO CONFIRMATION) **see notes*
 Tape Operation | Stop,Play,PlayPause,Record,RecordPause,Fast Forward,Rewind of the tape Deck
 
-**Note *mute and slolo*:** All mute and solo actions also have a Toggle option that inverts the current state of the board channel.
+**Note *mute, solo, processing*:** All mute, solo, and processing actions also have a Toggle option that inverts the current state of the board setting.
 
 **Note *fader adjustment*:** This module stores fader position as a range from 0 (-oo dB) to 100 (+10dB). The conversion from position to dB is explained below. Fader changes also have an optional duration of 0 to 60000 mSec (0 to 60 seconds) to create cross fades.
 
@@ -92,6 +93,7 @@ Feedback | Description
 **Indicate Channel Solo** *| Changes the button when (Channel/Bus/DCA/FX send/FX return) Solo on
 **Indicate Main LR Solo** *| Changes the button when Main LR Solo on
 **Indicate USB/Aux Solo** *| Changes the button when USB/Aux Solo on
+**Indicate _processing_ status** *| Changes the button according to the selected channel/process status
 **Color when Solo Mute** *| Sets the button color when the Solo output is muted
 **Color when Solo Mono** *| Sets the button color when the Solo output is mono
 **Color when Solo Dim** *| Sets the button color when the Solo output is dimmed

@@ -1,8 +1,8 @@
 
 var instance_skel = require('../../instance_skel');
 var OSC = require('osc');
-var stripDef = require('./stripdef.json');
-var soloDef = require('./solodef.json');
+var defStrip = require('./defStrip.json');
+var defSolo = require('./defSolo.json');
 var debug;
 var log;
 
@@ -357,7 +357,7 @@ instance.prototype.init_solos = function () {
 	}
 
 
-	var def = soloDef;
+	var def = defSolo;
 
 	for (id in def) {
 		cmd = def[id];
@@ -656,22 +656,52 @@ instance.prototype.init_strips = function () {
 	var fadeID;
 	var sendID;
 	var fbID;
+	var fpID;
 	var fID;
 	var bOrF;
 	var sChan;
 	var fbDescription;
+	var hasOn;
+	var hasMix;
 
 	var stat = {};
 	var muteActions = {};
+	var procActions = {};
 	var fadeActions = {};
 	var storeActions = {};
 	var sendActions = {};
 	var muteFeedbacks = {};
+	var procFeedbacks = {};
 	var colorFeedbacks = {};
 	var defVariables = [];
+	var theStrip;
 	var muteChoice;
 
 	var busOpts = [];
+
+	var defProc = {
+
+		insert: {
+			node: 'insert/on',
+			desc: 'Insert FX',
+		},
+		gate: {
+			node: 'gate/on',
+			desc: 'Noise Gate',
+		},
+		eq: {
+			node: 'eq/on',
+			desc: 'EQ',
+		},
+		dyn: {
+			node: 'dyn/on',
+			desc: 'Compressor',
+		},
+		lr: {
+			node: 'mix/lr',
+			desc: 'Main Out'
+		}
+	}
 
 	for (b=1; b<11; b++) {
 		busOpts.push({
@@ -687,33 +717,106 @@ instance.prototype.init_strips = function () {
 		return d + (min == 0 ? '' : " " + min + "-" + max);
 	}
 
-	for (i in stripDef) {
-		fbID = stripDef[i].id;
+	for (i in defStrip) {
+		theStrip = defStrip[i];
+		fbID = theStrip.id;
 		chID = '/' + fbID;
-		muteID = stripDef[i].muteID;
-		fadeID = stripDef[i].fadeID;
-		d = stripDef[i].digits;
-		muteChoice = [ stripDef[i].hasOn ? '0' : '1', stripDef[i].hasOn ? '1' : '0', '2'];
-		muteSfx = (stripDef[i].hasMix ? '/mix' : '') + (stripDef[i].hasOn ? '/on' : '');
-		fadeSfx = (stripDef[i].hasMix ? '/mix' : '') + (stripDef[i].hasOn ? '/fader' : '');
-		labelSfx = (stripDef[i].hasOn ? '/config' : '');
-		defaultLabel = stripDef[i].label;
+		muteID = theStrip.muteID;
+		fadeID = theStrip.fadeID;
+		d = theStrip.digits;
+		muteChoice = [ theStrip.hasOn ? '0' : '1', theStrip.hasOn ? '1' : '0', '2'];
+		muteSfx = (theStrip.hasMix ? '/mix' : '') + (theStrip.hasOn ? '/on' : '');
+		fadeSfx = (theStrip.hasMix ? '/mix' : '') + (theStrip.hasOn ? '/fader' : '');
+		labelSfx = (theStrip.hasOn ? '/config' : '');
+		defaultLabel = theStrip.label;
 		if (defaultLabel != '' && d > 0 ){
 			defaultLabel = defaultLabel + ' ';
+		}
+
+		console.log(`${chID}${muteSfx}, ${fadeSfx}`);
+
+		// additional strip toggles
+
+		for (var p of theStrip.proc) {
+			var mID = theStrip.procPfx + p;
+			if (0==d) {		// LR, rtn/aux (usb)
+				procActions[mID] = {
+					label: `${theStrip.description} ${defProc[p].desc} State`,
+					options: [ {
+						type:	'dropdown',
+						label:	'Value',
+						id:		'set',
+						default: '2',
+						choices: [
+							{id: '1', label: 'On'},
+							{id: '0', label: 'Off'},
+							{id: '2', label: 'Toggle'}
+						]
+					} ],
+				};
+			} else {
+				if (mID in procActions) {
+					l = `${theStrip.description} ${theStrip.min}-${theStrip.max}`
+					procActions[mID].options[0].choices.push({
+						id:		`${chID}/`,
+						label: 	l
+					});
+					procActions[mID].options[1].label += `, ${theStrip.description}`;
+				} else {
+					procActions[mID] = {
+						label: defProc[p].desc + ' State',
+						options: [
+							{
+								type:	'dropdown',
+								label:	'Type',
+								id:		'type',
+								choices: [ {
+									id:		`${chID}/`,
+									label:	`${theStrip.description} ${theStrip.min}-${theStrip.max}`
+								} ],
+								default: chID + '/'
+							},
+							{
+								type: 'number',
+								label: theStrip.description,
+								id: 'num',
+								default: 1,
+								min: theStrip.min,
+								max: theStrip.max,
+								range: false,
+								required: true
+							},
+							{
+								type:	'dropdown',
+								label:	'Value',
+								id:		'set',
+								default: '2',
+								choices: [
+									{id: '1', label: 'On'},
+									{id: '0', label: 'Off'},
+									{id: '2', label: 'Toggle'}
+								]
+							}
+						]
+					}
+				}
+			}
+
+			console.log(`${chID}/${defProc[p].node} "${theStrip.description} ${defProc[p].desc}"`);
 		}
 
 		if (muteID in muteActions) {
 			muteActions[muteID].options[0].choices.push({
 				id:    chID + '/',
-				label: stripDef[i].description + " " + stripDef[i].min + "-" + stripDef[i].max
+				label: theStrip.description + " " + theStrip.min + "-" + theStrip.max
 			});
-			l = muteActions[muteID].options[1].label + ", " + stripDef[i].description;
+			l = muteActions[muteID].options[1].label + ", " + theStrip.description;
 			muteActions[muteID].options[1].label = l;
 		} else {
-			if (stripDef[i].hasOn == true) {
+			if (theStrip.hasOn == true) {
 				if (d>0) {					// one of the channel mutes
 					muteActions[muteID] = {
-						label: "Mute " + stripDef[i].description,
+						label: "Mute " + theStrip.description,
 						options: [
 							{
 								type:	'dropdown',
@@ -721,17 +824,17 @@ instance.prototype.init_strips = function () {
 								id:		'type',
 								choices: [ {
 									id: 	chID + '/',
-									label: stripDef[i].description + " "  + stripDef[i].min + "-" + stripDef[i].max
+									label: theStrip.description + " "  + theStrip.min + "-" + theStrip.max
 								} ],
 								default: chID + '/'
 							},
 							{
 								type: 'number',
-								label: stripDef[i].description,
+								label: theStrip.description,
 								id: 'num',
 								default: 1,
-								min: stripDef[i].min,
-								max: stripDef[i].max,
+								min: theStrip.min,
+								max: theStrip.max,
 								range: false,
 								required: true
 							}
@@ -739,21 +842,21 @@ instance.prototype.init_strips = function () {
 					};
 				} else {						// Main LR, Aux/USB
 					muteActions[muteID] = {
-						label: "Mute " + stripDef[i].description,
+						label: "Mute " + theStrip.description,
 						options: []
 					};
 				}
 			} else {							// Mute Group
 				muteActions[muteID] = {
-					label: stripDef[i].description,
+					label: theStrip.description,
 					options: [
 						{
 							type:	'number',
-							label:	stripDef[i].description + " " + stripDef[i].min + "-" + stripDef[i].max,
+							label:	theStrip.description + " " + theStrip.min + "-" + theStrip.max,
 							id:		'mute_grp',
 							default:'1',
-							min: stripDef[i].min,
-							max: stripDef[i].max,
+							min: theStrip.min,
+							max: theStrip.max,
 							range: false,
 							required: true
 						}
@@ -780,34 +883,34 @@ instance.prototype.init_strips = function () {
 		if (fadeActions[fadeID] !== undefined) {
 			fadeActions[fadeID].options[0].choices.push({
 				id:    chID + '/',
-				label: stripDef[i].description + " " + stripDef[i].min + "-" + stripDef[i].max
+				label: theStrip.description + " " + theStrip.min + "-" + theStrip.max
 			});
-			l = fadeActions[fadeID].options[1].label + ", " + stripDef[i].description;
+			l = fadeActions[fadeID].options[1].label + ", " + theStrip.description;
 			fadeActions[fadeID].options[1].label = l;
 
 			fadeActions[fadeID + '_a'].options[0].choices.push({
 				id:    chID + '/',
-				label: stripDef[i].description + " " + stripDef[i].min + "-" + stripDef[i].max
+				label: theStrip.description + " " + theStrip.min + "-" + theStrip.max
 			});
-			l = fadeActions[fadeID + '_a'].options[1].label + ", " + stripDef[i].description;
+			l = fadeActions[fadeID + '_a'].options[1].label + ", " + theStrip.description;
 			fadeActions[fadeID + '_a'].options[1].label = l;
 
 			storeActions[fadeID + '_s'].options[0].choices.push({
 				id:    chID + '/',
-				label: stripDef[i].description + " " + stripDef[i].min + "-" + stripDef[i].max
+				label: theStrip.description + " " + theStrip.min + "-" + theStrip.max
 			});
-			l = storeActions[fadeID + '_s'].options[1].label + ", " + stripDef[i].description;
+			l = storeActions[fadeID + '_s'].options[1].label + ", " + theStrip.description;
 			storeActions[fadeID + '_s'].options[1].label = l;
 
 			storeActions[fadeID + '_r'].options[0].choices.push({
 				id:    chID + '/',
-				label: stripDef[i].description + " " + stripDef[i].min + "-" + stripDef[i].max
+				label: theStrip.description + " " + theStrip.min + "-" + theStrip.max
 			});
-			l = storeActions[fadeID + '_r'].options[1].label + ", " + stripDef[i].description;
+			l = storeActions[fadeID + '_r'].options[1].label + ", " + theStrip.description;
 			storeActions[fadeID + '_r'].options[1].label = l;
 
 		} else {	// new strip
-			if (stripDef[i].hasOn == true) {
+			if (theStrip.hasOn == true) {
 				if (d>0) {					// one of the channel strips
 					fadeActions[fadeID] = {
 						label: "Fader Set",
@@ -818,17 +921,17 @@ instance.prototype.init_strips = function () {
 								id:		'type',
 								choices: [ {
 									id: 	chID + '/',
-									label: stripDef[i].description + " "  + stripDef[i].min + "-" + stripDef[i].max
+									label: theStrip.description + " "  + theStrip.min + "-" + theStrip.max
 								} ],
 								default: chID + '/'
 							},
 							{
 								type: 'number',
-								label: stripDef[i].description,
+								label: theStrip.description,
 								id: 'num',
 								default: 1,
-								min: stripDef[i].min,
-								max: stripDef[i].max,
+								min: theStrip.min,
+								max: theStrip.max,
 								range: false,
 								required: true
 							}
@@ -844,17 +947,17 @@ instance.prototype.init_strips = function () {
 								id:		'type',
 								choices: [ {
 									id: 	chID + '/',
-									label: stripDef[i].description + " "  + stripDef[i].min + "-" + stripDef[i].max
+									label: theStrip.description + " "  + theStrip.min + "-" + theStrip.max
 								} ],
 								default: chID + '/'
 							},
 							{
 								type: 'number',
-								label: stripDef[i].description,
+								label: theStrip.description,
 								id: 'num',
 								default: 1,
-								min: stripDef[i].min,
-								max: stripDef[i].max,
+								min: theStrip.min,
+								max: theStrip.max,
 								range: false,
 								required: true
 							}
@@ -870,17 +973,17 @@ instance.prototype.init_strips = function () {
 								id:		'type',
 								choices: [ {
 									id: 	chID + '/',
-									label: stripDef[i].description + " "  + stripDef[i].min + "-" + stripDef[i].max
+									label: theStrip.description + " "  + theStrip.min + "-" + theStrip.max
 								} ],
 								default: chID + '/'
 							},
 							{
 								type: 'number',
-								label: stripDef[i].description,
+								label: theStrip.description,
 								id: 'num',
 								default: 1,
-								min: stripDef[i].min,
-								max: stripDef[i].max,
+								min: theStrip.min,
+								max: theStrip.max,
 								range: false,
 								required: true
 							}
@@ -896,17 +999,17 @@ instance.prototype.init_strips = function () {
 								id:		'type',
 								choices: [ {
 									id: 	chID + '/',
-									label: stripDef[i].description + " "  + stripDef[i].min + "-" + stripDef[i].max
+									label: theStrip.description + " "  + theStrip.min + "-" + theStrip.max
 								} ],
 								default: chID + '/'
 							},
 							{
 								type: 'number',
-								label: stripDef[i].description,
+								label: theStrip.description,
 								id: 'num',
 								default: 1,
-								min: stripDef[i].min,
-								max: stripDef[i].max,
+								min: theStrip.min,
+								max: theStrip.max,
 								range: false,
 								required: true
 							}
@@ -914,26 +1017,26 @@ instance.prototype.init_strips = function () {
 					};
 				} else {						// Main LR, Aux/USB
 					fadeActions[fadeID] = {
-						label: stripDef[i].description + " Fader Set",
+						label: theStrip.description + " Fader Set",
 						options: []
 					};
 					fadeActions[fadeID+'_a'] = {
-						label: stripDef[i].description + " Fader Adjust",
+						label: theStrip.description + " Fader Adjust",
 						options: []
 					};
 					storeActions[fadeID+'_s'] = {
-						label: "Store " + stripDef[i].description + " Fader",
+						label: "Store " + theStrip.description + " Fader",
 						options: []
 					};
 					storeActions[fadeID+'_r'] = {
-						label: "Recall " + stripDef[i].description + " Fader",
+						label: "Recall " + theStrip.description + " Fader",
 						options: []
 					};
 
 				}	// else mute group (no fader)
 			}
 
-			if (stripDef[i].hasOn) {
+			if (theStrip.hasOn) {
 				fadeActions[fadeID].options.push( {
 					type:	'dropdown',
 					label:	'Fader Level',
@@ -1014,35 +1117,35 @@ instance.prototype.init_strips = function () {
 		}
 
 		// add channel type to send actions
-		if (stripDef[i].hasLevel) {
+		if (theStrip.hasLevel) {
 			sendID = 'send';
 			if (sendActions[sendID] !== undefined) {
 				sendActions[sendID].options[0].choices.push({
 					id:    chID + '/',
-					label: sendLabel(stripDef[i].description, stripDef[i].min, stripDef[i].max)
+					label: sendLabel(theStrip.description, theStrip.min, theStrip.max)
 				});
-				l = sendActions[sendID].options[1].label + ", " + stripDef[i].description;
+				l = sendActions[sendID].options[1].label + ", " + theStrip.description;
 				sendActions[sendID].options[1].label = l;
 
 				sendActions[sendID + '_a'].options[0].choices.push({
 					id:    chID + '/',
-					label: sendLabel(stripDef[i].description, stripDef[i].min, stripDef[i].max)
+					label: sendLabel(theStrip.description, theStrip.min, theStrip.max)
 				});
-				l = sendActions[sendID + '_a'].options[1].label + ", " + stripDef[i].description;
+				l = sendActions[sendID + '_a'].options[1].label + ", " + theStrip.description;
 				sendActions[sendID + '_a'].options[1].label = l;
 
 				storeActions[sendID + '_s'].options[0].choices.push({
 					id:    chID + '/',
-					label: sendLabel(stripDef[i].description, stripDef[i].min, stripDef[i].max)
+					label: sendLabel(theStrip.description, theStrip.min, theStrip.max)
 				});
-				l = storeActions[sendID + '_s'].options[1].label + ", " + stripDef[i].description;
+				l = storeActions[sendID + '_s'].options[1].label + ", " + theStrip.description;
 				storeActions[sendID + '_s'].options[1].label = l;
 
 				storeActions[sendID + '_r'].options[0].choices.push({
 					id:    chID + '/',
-					label: sendLabel(stripDef[i].description, stripDef[i].min, stripDef[i].max)
+					label: sendLabel(theStrip.description, theStrip.min, theStrip.max)
 				});
-				l = storeActions[sendID + '_r'].options[1].label + ", " + stripDef[i].description;
+				l = storeActions[sendID + '_r'].options[1].label + ", " + theStrip.description;
 				storeActions[sendID + '_r'].options[1].label = l;
 
 			} else { // new channel
@@ -1055,17 +1158,17 @@ instance.prototype.init_strips = function () {
 							id:		'type',
 							choices: [ {
 								id: 	chID + '/',
-								label: sendLabel(stripDef[i].description, stripDef[i].min, stripDef[i].max)
+								label: sendLabel(theStrip.description, theStrip.min, theStrip.max)
 							} ],
 							default: chID + '/'
 						},
 						{
 							type: 'number',
-							label: stripDef[i].description,
+							label: theStrip.description,
 							id: 'chNum',
 							default: 1,
-							min: stripDef[i].min,
-							max: stripDef[i].max,
+							min: theStrip.min,
+							max: theStrip.max,
 							range: false,
 							required: true
 						},
@@ -1096,18 +1199,18 @@ instance.prototype.init_strips = function () {
 							id:		'type',
 							choices: [ {
 								id: 	chID + '/',
-								label: sendLabel(stripDef[i].description, stripDef[i].min, stripDef[i].max)
+								label: sendLabel(theStrip.description, theStrip.min, theStrip.max)
 
 							} ],
 							default: chID + '/'
 						},
 						{
 							type: 'number',
-							label: stripDef[i].description,
+							label: theStrip.description,
 							id: 'chNum',
 							default: 1,
-							min: stripDef[i].min,
-							max: stripDef[i].max,
+							min: theStrip.min,
+							max: theStrip.max,
 							range: false,
 							required: true
 						},
@@ -1152,17 +1255,17 @@ instance.prototype.init_strips = function () {
 							id:		'type',
 							choices: [ {
 								id: 	chID + '/',
-								label: sendLabel(stripDef[i].description, stripDef[i].min, stripDef[i].max)
+								label: sendLabel(theStrip.description, theStrip.min, theStrip.max)
 							} ],
 							default: chID + '/'
 						},
 						{
 							type: 'number',
-							label: stripDef[i].description,
+							label: theStrip.description,
 							id: 'chNum',
 							default: 1,
-							min: stripDef[i].min,
-							max: stripDef[i].max,
+							min: theStrip.min,
+							max: theStrip.max,
 							range: false,
 							required: true
 						},
@@ -1198,17 +1301,17 @@ instance.prototype.init_strips = function () {
 							id:		'type',
 							choices: [ {
 								id: 	chID + '/',
-								label: sendLabel(stripDef[i].description, stripDef[i].min, stripDef[i].max)
+								label: sendLabel(theStrip.description, theStrip.min, theStrip.max)
 							} ],
 							default: chID + '/'
 						},
 						{
 							type: 'number',
-							label: stripDef[i].description,
+							label: theStrip.description,
 							id: 'chNum',
 							default: 1,
-							min: stripDef[i].min,
-							max: stripDef[i].max,
+							min: theStrip.min,
+							max: theStrip.max,
 							range: false,
 							required: true
 						},
@@ -1252,10 +1355,23 @@ instance.prototype.init_strips = function () {
 			self.fbToStat[fbID] = theID;
 			stat[theID] = {
 				isOn: false,
-				hasOn: stripDef[i].hasOn,
+				hasOn: theStrip.hasOn,
 				valid: false,
 				fbID: fbID,
 				polled: 0
+			};
+			// 'proc' routing toggles
+			for (var p of theStrip.proc) {
+				theID = `${chID}/${defProc[p].node}`;
+				fID = bx_unslash(fbID) + '_' + p
+				stat[theID] = {
+					isOn: false,
+					hasOn: true,
+					valid: false,
+					fbID: fID,
+					polled: 0
+				};
+				self.fbToStat[fID] = theID;
 			};
 			theID = chID + fadeSfx;
 			fID = 'f_' + bx_unslash(fbID);
@@ -1269,11 +1385,11 @@ instance.prototype.init_strips = function () {
 				polled: 0
 			};
 			defVariables.push({
-				label: stripDef[i].description + " dB",
+				label: theStrip.description + " dB",
 				name: fID + "_d"
 			});
 			defVariables.push({
-				label: stripDef[i].description + " %",
+				label: theStrip.description + " %",
 				name: fID + "_p"
 			});
 			if ('' != labelSfx) {
@@ -1288,7 +1404,7 @@ instance.prototype.init_strips = function () {
 					polled: 0
 				};
 				defVariables.push({
-					label: stripDef[i].description + " Label",
+					label: theStrip.description + " Label",
 					name: fID
 				});
 				theID = chID + labelSfx + "/color";
@@ -1301,7 +1417,7 @@ instance.prototype.init_strips = function () {
 					polled: 0
 				};
 			}
-			if (stripDef[i].hasLevel) {
+			if (theStrip.hasLevel) {
 				for (b = 1; b<11; b++) {
 					bOrF = (b < 7 ? 'b' : 'f');
 					sChan = (b < 7 ? b : b-6);
@@ -1328,16 +1444,30 @@ instance.prototype.init_strips = function () {
 				}
 			}
 		} else {
-			for (c = stripDef[i].min; c <= stripDef[i].max; c++) {
+			for (c = theStrip.min; c <= theStrip.max; c++) {
 				theID = chID + '/' + bx_pad2(c,d) + muteSfx;
 				fID = fbID + '_' + c;
 				self.fbToStat[fID] = theID;
 				stat[theID] = {
 					isOn: false,
-					hasOn: stripDef[i].hasOn,
+					hasOn: theStrip.hasOn,
 					valid: false,
 					fbID: fbID,
 					polled: 0
+				};
+				// 'proc' routing toggles
+				for (var p of theStrip.proc) {
+					theID = `${chID}/${bx_pad2(c,d)}/${defProc[p].node}`;
+					fpID = `${bx_unslash(fbID)}_${p}`;
+					fID = `${fpID}${c}`;
+					self.fbToStat[fID] = theID;
+					stat[theID] = {
+						isOn: false,
+						hasOn: true,
+						valid: false,
+						fbID: fpID,
+						polled: 0
+					};
 				};
 				if ('' != fadeSfx) {
 					theID = chID  + '/' + bx_pad2(c,d) + fadeSfx;
@@ -1352,14 +1482,14 @@ instance.prototype.init_strips = function () {
 						polled: 0
 					};
 					defVariables.push({
-						label: stripDef[i].description + " " + c + " dB",
+						label: theStrip.description + " " + c + " dB",
 						name: fID + "_d"
 					});
 					defVariables.push({
-						label: stripDef[i].description + " " + c + " %",
+						label: theStrip.description + " " + c + " %",
 						name: fID + "_p"
 					});
-					if (stripDef[i].hasLevel) {
+					if (theStrip.hasLevel) {
 						for (b = 1; b<11; b++) {
 							bOrF = (b < 7 ? 'b' : 'f');
 							sChan = (b < 7 ? b : b-6);
@@ -1398,7 +1528,7 @@ instance.prototype.init_strips = function () {
 						polled: 0
 					};
 					defVariables.push({
-						label: stripDef[i].description + " " + c + " Label",
+						label: theStrip.description + " " + c + " Label",
 						name: fID
 					});
 					theID = chID + '/' + bx_pad2(c,d) + labelSfx + "/color";
@@ -1415,7 +1545,7 @@ instance.prototype.init_strips = function () {
 		}
 
 		// mute feedback defs
-		fbDescription = stripDef[i].description + " " + (stripDef[i].hasOn ? "Mute" : "") + " status";
+		fbDescription = theStrip.description + " " + (theStrip.hasOn ? "Mute" : "") + " status";
 		muteFeedbacks[fbID] = {
 			type: 'boolean',
 			label: 		 "Indicate " + fbDescription,
@@ -1453,19 +1583,70 @@ instance.prototype.init_strips = function () {
 		if (d>0) {
 			muteFeedbacks[fbID].options.push( {
 				type: 'number',
-				label: stripDef[i].description + ' number',
+				label: theStrip.description + ' number',
 				id: 'theChannel',
 				default: 1,
-				min: stripDef[i].min,
-				max: stripDef[i].max,
+				min: theStrip.min,
+				max: theStrip.max,
 				range: false,
 				required: true
 			} );
 		}
+		// 'proc' routing toggles
+		for (var p of theStrip.proc) {
+			fbDescription = `${theStrip.description} ${defProc[p].desc} status`;
+			fID = `${fbID}_${p}`;
+			muteFeedbacks[fID] = {
+				type: 		'boolean',
+				label: 		 "Indicate " + fbDescription,
+				description: "Indicate " + fbDescription + " on button",
+				options: [
+					{
+						type:	'dropdown',
+						label:	'State',
+						id:		'state',
+						default: '1',
+						choices: [
+							{id: '1', label: 'On'},
+							{id: '0', label: 'Off'}
+						]
+					}
+				],
+				style: {
+					color: self.rgb(192,192,192),
+					bgcolor: self.rgb(0, 92, 128)
+				},
+				callback: function(feedback, bank) {
+					var theChannel = feedback.options.theChannel;
+					var fbType = feedback.type;
+					var stat;
+					var state = feedback.options.state != '0';
+
+					if (theChannel) {
+						stat = self.xStat[self.fbToStat[fbType + theChannel]];
+					} else if ( self.fbToStat[fbType] ) {
+						stat = self.xStat[self.fbToStat[fbType]];
+					}
+					return (stat.isOn  == state);
+				}
+			};
+			if (d>0) {
+				muteFeedbacks[fID].options.push( {
+					type: 'number',
+					label: theStrip.description + ' number',
+					id: 'theChannel',
+					default: 1,
+					min: theStrip.min,
+					max: theStrip.max,
+					range: false,
+					required: true
+				} );
+			}
+		}
 
 		// channel color feedbacks
-		if (stripDef[i].hasOn) {
-			fbDescription = stripDef[i].description + " label";
+		if (theStrip.hasOn) {
+			fbDescription = theStrip.description + " label";
 			var cID = 'c_' + bx_unslash(fbID);
 			colorFeedbacks[cID] = {
 				label: 		 "Color of " + fbDescription,
@@ -1486,11 +1667,11 @@ instance.prototype.init_strips = function () {
 			if (d>0) {
 				colorFeedbacks[cID].options.push( {
 					type: 'number',
-					label: stripDef[i].description + ' number',
+					label: theStrip.description + ' number',
 					id: 'theChannel',
 					default: 1,
-					min: stripDef[i].min,
-					max: stripDef[i].max,
+					min: theStrip.min,
+					max: theStrip.max,
 					range: false,
 					required: true
 				} );
@@ -1502,6 +1683,7 @@ instance.prototype.init_strips = function () {
 	self.actionDefs = fadeActions;
 	Object.assign(self.actionDefs, sendActions);
 	Object.assign(self.actionDefs, muteActions);
+	Object.assign(self.actionDefs, procActions);
 	Object.assign(self.actionDefs, storeActions);
 	self.muteFeedbacks = muteFeedbacks;
 	self.colorFeedbacks = colorFeedbacks;
@@ -1520,7 +1702,7 @@ instance.prototype.pollStats = function () {
 			stillNeed = true;
 			if (self.xStat[id].polled < timeOut) {
 				self.sendOSC(id);
-				self.debug("sending " + id);
+				// self.debug("sending " + id);
 				self.xStat[id].polled = timeNow;
 				counter++;
 				if (counter > self.PollCount) {
@@ -1601,6 +1783,7 @@ instance.prototype.init_osc = function() {
 				var v = args[0].value;
 				switch (leaf) {
 				case 'on':
+				case 'lr':
 					self.xStat[node].isOn = (v == 1);
 					self.checkFeedbacks(self.xStat[node].fbID);
 					break;
@@ -2153,7 +2336,7 @@ instance.prototype.action = function(action) {
 				r = oldVal + xDelta;
 			}
 		}
-		self.debug(`---------- ${oldIdx}:${oldVal} by ${byVal}(${opTicks}) fadeTo ${newIdx}:${r} ----------`);
+		// self.debug(`---------- ${oldIdx}:${oldVal} by ${byVal}(${opTicks}) fadeTo ${newIdx}:${r} ----------`);
 		return r;
 	}
 
@@ -2178,6 +2361,27 @@ instance.prototype.action = function(action) {
 			arg = {
 				type: 'i',
 				value: setToggle(cmd, opt.mute)
+			};
+		break;
+
+		case 'gate':
+		case 'dyn':
+		case 'insert':
+		case 'eq':
+		case 'lr':
+			if (opt.type == '/ch/') {
+				nVal = ('0' + parseInt(opt.num)).substr(-2);
+			} else {
+				nVal = parseInt(opt.num);
+			}
+			if (action.action == 'lr') {
+				cmd = opt.type + nVal + '/mix/lr';
+			} else {
+				cmd = opt.type + nVal + '/' + action.action + '/on';
+			}
+			arg = {
+				type: 'i',
+				value: setToggle(cmd, opt.set)
 			};
 		break;
 
@@ -2464,7 +2668,7 @@ instance.prototype.action = function(action) {
 
 	if (cmd !== undefined) {
 		self.sendOSC(cmd,arg);
-		debug (cmd, arg);
+//		debug (cmd, arg);
 	}
 };
 

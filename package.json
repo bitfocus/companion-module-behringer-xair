@@ -3,13 +3,22 @@
 	"legacy": [
 		"xair"
 	],
-	"version": "1.6.6",
+	"version": "1.6.7",
 	"api_version": "1.0.0",
 	"keywords": [
-		"Audio","Mixer","Console"
+		"Audio",
+		"Mixer",
+		"Console"
 	],
 	"manufacturer": "Behringer/Midas",
-	"product": ["XR/MR", "XAir","XR12","XR16","X18","XR18"],
+	"product": [
+		"XR/MR",
+		"XAir",
+		"XR12",
+		"XR16",
+		"X18",
+		"XR18"
+	],
 	"shortname": "xair",
 	"description": "Module to control Midas MR and Behringer XR series mixers",
 	"main": "index.js",
