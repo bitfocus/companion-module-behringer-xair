@@ -516,6 +516,10 @@ instance.prototype.init_solos = function () {
 						label: fbDescription + " %",
 						name: soloID + "_p"
 					});
+					soloVariables.push({
+						label: fbDescription + " % Relative Loudness",
+						name: soloID + "_pp"
+					});
 				} else {
 					soloActions[actID] = {
 						label: "Solo " + ch.description,
@@ -1392,6 +1396,10 @@ instance.prototype.init_strips = function () {
 				label: theStrip.description + " %",
 				name: fID + "_p"
 			});
+			defVariables.push({
+				label: theStrip.description + " % Relative Loudness",
+				name: fID + "_pp"
+			});
 			if ('' != labelSfx) {
 				theID = chID + labelSfx + "/name";
 				fID = 'l_' + bx_unslash(fbID);
@@ -1441,6 +1449,10 @@ instance.prototype.init_strips = function () {
 						label: capFirst(fbID) + " " + c + sendID + " %",
 						name: fID + "_p"
 					});
+					defVariables.push({
+						label: capFirst(fbID) + " " + c + sendID + " % Relative Loudness",
+						name: fID + "_pp"
+					});
 				}
 			}
 		} else {
@@ -1489,6 +1501,10 @@ instance.prototype.init_strips = function () {
 						label: theStrip.description + " " + c + " %",
 						name: fID + "_p"
 					});
+					defVariables.push({
+						label: theStrip.description + " " + c + " % Relative Loudness",
+						name: fID + "_pp"
+					});
 					if (theStrip.hasLevel) {
 						for (b = 1; b<11; b++) {
 							bOrF = (b < 7 ? 'b' : 'f');
@@ -1513,6 +1529,11 @@ instance.prototype.init_strips = function () {
 								label: capFirst(fbID) + " " + c + sendID + " %",
 								name: fID + "_p"
 							});
+							defVariables.push({
+								label: capFirst(fbID) + " " + c + sendID + " % Relative Loudness",
+								name: fID + "_pp"
+							});
+							
 						}
 					}
 				}
@@ -1739,9 +1760,10 @@ instance.prototype.stepsToFader = function (i, steps) {
 	return Math.floor(res * 10000) / 10000;
 };
 
-instance.prototype.faderToDB = function ( f, steps ) {
+instance.prototype.faderToDB = function ( f, steps , pp) {
 // “f” represents OSC float data. f: [0.0, 1.0]
 // “d” represents the dB float data. d:[-oo, +10]
+// if "pp" (perceptual percent) is true, the function returns a loudness perceptual (base 10/33.22) change in % compared to unity (0dB)
 	var d = 0;
 
 	if (f >= 0.5) {
@@ -1753,7 +1775,7 @@ instance.prototype.faderToDB = function ( f, steps ) {
 	} else if (f >= 0.0) {
 		d = f * 480.0 - 90.0;		// min dB value: -90 or -oo
 	}
-	return (f==0 ? "-oo" : (d>0 ? '+':'') + (Math.round(d * 1023.5) / 1024).toFixed(1));
+	return (f==0 ? (pp ? "0":"-oo") : (pp? "":d>0 ? '+':'') + (pp? (100 * 10 ** (d/33.22)) : Math.round(d * 1023.5) / 1024).toFixed(1));
 };
 
 instance.prototype.init_osc = function() {
@@ -1799,7 +1821,8 @@ instance.prototype.init_osc = function() {
 					v = Math.floor(v * 10000) / 10000;
 					self.xStat[node][leaf] = v;
 					self.setVariable(self.xStat[node].varID + '_p',Math.round(v * 100));
-					self.setVariable(self.xStat[node].varID + '_d',self.faderToDB(v,1024));
+					self.setVariable(self.xStat[node].varID + '_d',self.faderToDB(v,1024,false));
+					self.setVariable(self.xStat[node].varID + '_pp',Math.round(self.faderToDB(v,1024,true)));
 					self.xStat[node].idx = self.fLevels[self.xStat[node].fSteps].findIndex((i) => i >= v);
 					break;
 				case 'name':
