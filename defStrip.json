@@ -1,5 +1,4 @@
-[
-	{
+[{
 		"id": "ch",
 		"digits": 2,
 		"min": 1,
@@ -10,6 +9,8 @@
 		"fadeID": "fad",
 		"hasLevel": true,
 		"hasMix": true,
+		"proc": ["gate", "insert", "eq", "dyn", "lr"],
+		"procPfx": "",
 		"hasOn": true
 	},
 	{
@@ -23,6 +24,8 @@
 		"fadeID": "fad",
 		"hasLevel": true,
 		"hasMix": true,
+		"proc": ["eq","lr"],
+		"procPfx": "",
 		"hasOn": true
 	},
 	{
@@ -36,6 +39,8 @@
 		"label": "FX",
 		"hasLevel": false,
 		"hasMix": true,
+		"proc": [],
+		"procPfx": "",
 		"hasOn": true
 	},
 	{
@@ -49,6 +54,8 @@
 		"fadeID": "fad",
 		"hasLevel": false,
 		"hasMix": true,
+		"proc": ["insert", "eq", "dyn","lr"],
+		"procPfx": "",
 		"hasOn": true
 	},
 	{
@@ -62,6 +69,7 @@
 		"fadeID": "fad",
 		"hasLevel": false,
 		"hasMix": false,
+		"proc": [],
 		"hasOn": true
 	},
 	{
@@ -75,6 +83,8 @@
 		"label": "LR",
 		"hasLevel": false,
 		"hasMix": true,
+		"procPfx": "m_",
+		"proc": ["insert", "eq", "dyn"],
 		"hasOn": true
 	},
 	{
@@ -88,6 +98,8 @@
 		"fadeID": "usbFad",
 		"hasLevel": true,
 		"hasMix": true,
+		"proc": ["eq"],
+		"procPfx": "u_",
 		"hasOn": true
 	},
 	{
@@ -99,6 +111,7 @@
 		"muteID": "mute_grp",
 		"hasLevel": false,
 		"hasMix": false,
+		"proc": [],
 		"hasOn": false
 	}
 ]
