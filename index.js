@@ -518,7 +518,7 @@ instance.prototype.init_solos = function () {
 					});
 					soloVariables.push({
 						label: fbDescription + " % Relative Loudness",
-						name: soloID + "_pp"
+						name: soloID + "_rp"
 					});
 				} else {
 					soloActions[actID] = {
@@ -1398,7 +1398,7 @@ instance.prototype.init_strips = function () {
 			});
 			defVariables.push({
 				label: theStrip.description + " % Relative Loudness",
-				name: fID + "_pp"
+				name: fID + "_rp"
 			});
 			if ('' != labelSfx) {
 				theID = chID + labelSfx + "/name";
@@ -1451,7 +1451,7 @@ instance.prototype.init_strips = function () {
 					});
 					defVariables.push({
 						label: capFirst(fbID) + " " + c + sendID + " % Relative Loudness",
-						name: fID + "_pp"
+						name: fID + "_rp"
 					});
 				}
 			}
@@ -1503,7 +1503,7 @@ instance.prototype.init_strips = function () {
 					});
 					defVariables.push({
 						label: theStrip.description + " " + c + " % Relative Loudness",
-						name: fID + "_pp"
+						name: fID + "_rp"
 					});
 					if (theStrip.hasLevel) {
 						for (b = 1; b<11; b++) {
@@ -1531,7 +1531,7 @@ instance.prototype.init_strips = function () {
 							});
 							defVariables.push({
 								label: capFirst(fbID) + " " + c + sendID + " % Relative Loudness",
-								name: fID + "_pp"
+								name: fID + "_rp"
 							});
 							
 						}
@@ -1760,10 +1760,10 @@ instance.prototype.stepsToFader = function (i, steps) {
 	return Math.floor(res * 10000) / 10000;
 };
 
-instance.prototype.faderToDB = function ( f, steps , pp) {
+instance.prototype.faderToDB = function ( f, steps , rp) {
 // “f” represents OSC float data. f: [0.0, 1.0]
 // “d” represents the dB float data. d:[-oo, +10]
-// if "pp" (perceptual percent) is true, the function returns a loudness perceptual (base 10/33.22) change in % compared to unity (0dB)
+// if "rp" (Relative percent) is true, the function returns a loudness perceptual (base 10/33.22) change in % compared to unity (0dB)
 	var d = 0;
 
 	if (f >= 0.5) {
@@ -1775,7 +1775,7 @@ instance.prototype.faderToDB = function ( f, steps , pp) {
 	} else if (f >= 0.0) {
 		d = f * 480.0 - 90.0;		// min dB value: -90 or -oo
 	}
-	return (f==0 ? (pp ? "0":"-oo") : (pp? "":d>0 ? '+':'') + (pp? (100 * 10 ** (d/33.22)) : Math.round(d * 1023.5) / 1024).toFixed(1));
+	return (f==0 ? (rp ? "0":"-oo") : (rp? "":d>0 ? '+':'') + (rp? (100 * 10 ** (d/33.22)) : Math.round(d * 1023.5) / 1024).toFixed(1));
 };
 
 instance.prototype.init_osc = function() {
@@ -1822,7 +1822,7 @@ instance.prototype.init_osc = function() {
 					self.xStat[node][leaf] = v;
 					self.setVariable(self.xStat[node].varID + '_p',Math.round(v * 100));
 					self.setVariable(self.xStat[node].varID + '_d',self.faderToDB(v,1024,false));
-					self.setVariable(self.xStat[node].varID + '_pp',Math.round(self.faderToDB(v,1024,true)));
+					self.setVariable(self.xStat[node].varID + '_rp',Math.round(self.faderToDB(v,1024,true)));
 					self.xStat[node].idx = self.fLevels[self.xStat[node].fSteps].findIndex((i) => i >= v);
 					break;
 				case 'name':

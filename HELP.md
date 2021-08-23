@@ -61,20 +61,28 @@ Variable | Description
 **$(INSTANCENAME:l_fxsend#)** | Label on FX Bus Master #
 **$(INSTANCENAME:f_lr_d)** | LR/Main Fader dB
 **$(INSTANCENAME:f_lr_p)** | LR/Main Fader Percent
+**$(INSTANCENAME:f_lr_rp)** | LR/Main Relative Loudness Percent
 **$(INSTANCENAME:f_rtn_aux_d)** | USB/Aux return Fader dB
 **$(INSTANCENAME:f_rtn_aux_p)** | USB/Aux return Fader Percent
+**$(INSTANCENAME:f_rtn_aux_rp)** | USB/Aux return Fader Relative Loudness Percent
 **$(INSTANCENAME:f_ch#_d)** | Channel # Fader dB
 **$(INSTANCENAME:f_ch#_p)** | Channel # Fader Percent
+**$(INSTANCENAME:f_ch#_rp)** | Channel # Fader Relative Loudness Percent
 **$(INSTANCENAME:f_bus#_d)** | Bus Master # Fader dB
 **$(INSTANCENAME:f_bus#_p)** | Bus Master # Fader Percent
+**$(INSTANCENAME:f_bus#_rp)** | Bus Master # Fader Relative Loudness Percent
 **$(INSTANCENAME:f_dca#_d)** | DCA # Fader dB
 **$(INSTANCENAME:f_dca#_p)** | DCA # Fader Percent
+**$(INSTANCENAME:f_dca#_rp)** | DCA # Fader Relative Loudness Percent
 **$(INSTANCENAME:f_rtn#_d)** | Return # Fader dB
 **$(INSTANCENAME:f_rtn#_p)** | Return # Fader Percent
+**$(INSTANCENAME:f_rtn#_rp)** | Return # Fader Relative Loudness Percent
 **$(INSTANCENAME:f_fxsend#_d)** | FX Bus Master # Fader dB
 **$(INSTANCENAME:f_fxsend#_p)** | FX Bus Master # Fader Percent
+**$(INSTANCENAME:f_fxsend#_rp)** | FX Bus Master # Fader Relative Loudness Percent
 **$(INSTANCENAME:f_solo_d)** | Solo (monitor) output level dB
 **$(INSTANCENAME:f_solo_p)** | Solo (monitor) output level Percent
+**$(INSTANCENAME:f_fxsend#_rp)** | FX Bus Master # Fader Relative Loudness Percent
 
 **Note *Snapshot numbers*:** Replace {num} with the desired 2-digit snapshot number: $(xair:s_name_04). A snapshot with no name will have a default name of '#{num}': #04 (it is probably empty).
 
