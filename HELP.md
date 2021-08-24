@@ -61,22 +61,41 @@ Variable | Description
 **$(INSTANCENAME:l_fxsend#)** | Label on FX Bus Master #
 **$(INSTANCENAME:f_lr_d)** | LR/Main Fader dB
 **$(INSTANCENAME:f_lr_p)** | LR/Main Fader Percent
+**$(INSTANCENAME:f_lr_rp)** | LR/Main Relative Loudness Percent **see notes*
 **$(INSTANCENAME:f_rtn_aux_d)** | USB/Aux return Fader dB
 **$(INSTANCENAME:f_rtn_aux_p)** | USB/Aux return Fader Percent
+**$(INSTANCENAME:f_rtn_aux_rp)** | USB/Aux return Fader Relative Loudness Percent
 **$(INSTANCENAME:f_ch#_d)** | Channel # Fader dB
 **$(INSTANCENAME:f_ch#_p)** | Channel # Fader Percent
+**$(INSTANCENAME:f_ch#_rp)** | Channel # Fader Relative Loudness Percent
 **$(INSTANCENAME:f_bus#_d)** | Bus Master # Fader dB
 **$(INSTANCENAME:f_bus#_p)** | Bus Master # Fader Percent
+**$(INSTANCENAME:f_bus#_rp)** | Bus Master # Fader Relative Loudness Percent
 **$(INSTANCENAME:f_dca#_d)** | DCA # Fader dB
 **$(INSTANCENAME:f_dca#_p)** | DCA # Fader Percent
+**$(INSTANCENAME:f_dca#_rp)** | DCA # Fader Relative Loudness Percent
 **$(INSTANCENAME:f_rtn#_d)** | Return # Fader dB
 **$(INSTANCENAME:f_rtn#_p)** | Return # Fader Percent
+**$(INSTANCENAME:f_rtn#_rp)** | Return # Fader Relative Loudness Percent
 **$(INSTANCENAME:f_fxsend#_d)** | FX Bus Master # Fader dB
 **$(INSTANCENAME:f_fxsend#_p)** | FX Bus Master # Fader Percent
+**$(INSTANCENAME:f_fxsend#_rp)** | FX Bus Master # Fader Relative Loudness Percent
 **$(INSTANCENAME:f_solo_d)** | Solo (monitor) output level dB
 **$(INSTANCENAME:f_solo_p)** | Solo (monitor) output level Percent
+**$(INSTANCENAME:f_fxsend#_rp)** | FX Bus Master # Fader Relative Loudness Percent
 
 **Note *Snapshot numbers*:** Replace {num} with the desired 2-digit snapshot number: $(xair:s_name_04). A snapshot with no name will have a default name of '#{num}': #04 (it is probably empty).
+
+**Note *Relative Loudness*:** This variable shows the percieved loudness with 0dB fader gain as a reference (100%). +/- 10dB changes become x2/x0.5 respectively as per the Loudness Equation (10 x log2). This allows for a more non-savy user friendly readout. *See table bellow.*
+#####Example values :
+d (dB) | % (_p)| % (_rp)
+-----------------|---------------|---------------
++10 | 100 | 200
+0 | 75 | 100
+-10 | 50 | 50
+-20 | 38 | 25
+-30 | 25 | 13
+-40 | 19 | 6
 
 
 ## Feedback
