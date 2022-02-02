@@ -30,5 +30,13 @@
 		"Per Roine <per.roine@gmail.com>",
 		"Janos Münker"
 	],
-	"license": "MIT"
+	"license": "MIT",
+	"homepage": "https://github.com/bitfocus/companion-module-behringer-xair#readme",
+	"bugs": {
+		"url": "https://github.com/bitfocus/companion-module-behringer-xair/issues"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/bitfocus/companion-module-behringer-xair.git"
+	}
 }
