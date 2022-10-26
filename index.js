@@ -737,7 +737,7 @@ instance.prototype.init_strips = function () {
 			defaultLabel = defaultLabel + ' ';
 		}
 
-		console.log(`${chID}${muteSfx}, ${fadeSfx}`);
+		// console.log(`${chID}${muteSfx}, ${fadeSfx}`);
 
 		// additional strip toggles
 
@@ -806,7 +806,7 @@ instance.prototype.init_strips = function () {
 				}
 			}
 
-			console.log(`${chID}/${defProc[p].node} "${theStrip.description} ${defProc[p].desc}"`);
+			// console.log(`${chID}/${defProc[p].node} "${theStrip.description} ${defProc[p].desc}"`);
 		}
 
 		if (muteID in muteActions) {
@@ -1533,7 +1533,7 @@ instance.prototype.init_strips = function () {
 								label: capFirst(fbID) + " " + c + sendID + " % Relative Loudness",
 								name: fID + "_rp"
 							});
-							
+
 						}
 					}
 				}
@@ -2528,6 +2528,7 @@ instance.prototype.action = function(action) {
 		case 'solosw_ch':
 		case 'solosw_aux':
 		case 'solosw_fxr':
+		case 'solosw_fxs':
 		case 'solosw_bus':
 		case 'solosw_fsx':
 		case 'solosw_lr':
