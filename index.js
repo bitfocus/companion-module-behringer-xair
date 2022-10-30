@@ -1367,7 +1367,7 @@ instance.prototype.init_strips = function () {
 			// 'proc' routing toggles
 			for (var p of theStrip.proc) {
 				theID = `${chID}/${defProc[p].node}`;
-				fID = bx_unslash(fbID) + '_' + p
+				fID = `${fbID}_${p}`
 				stat[theID] = {
 					isOn: false,
 					hasOn: true,
@@ -1853,7 +1853,7 @@ instance.prototype.init_osc = function() {
 				if (self.needStats) {
 					self.pollStats();
 				}
-				debug(message);
+				// debug(message);
 			} else if (node.match(/^\/xinfo$/)) {
 				self.myMixer.name = args[1].value;
 				self.myMixer.model = args[2].value;
@@ -2414,6 +2414,22 @@ instance.prototype.action = function(action) {
 				type: 'i',
 				value: setToggle(cmd, opt.mute)
 			};
+		break;
+
+		case 'm_insert':
+		case 'm_dyn':
+		case 'm_eq':
+		case 'u_eq':
+			var p = action.action.split('_').pop()
+			if (action.action.split('_')[0] == 'm') {
+				cmd = `/lr/${p}/on`
+			} else {
+				cmd = `/rtn/aux/${p}/on`
+			}
+			arg = {
+				type: 'i',
+				value: setToggle(cmd, opt.set)
+			}
 		break;
 
 		case 'usbMute':
