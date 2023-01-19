@@ -640,9 +640,10 @@ instance.prototype.init_solos = function () {
 	}
 	self.soloOffset = soloOffset;
 	Object.assign(self.xStat, stat);
-	Object.assign(self.variableDefs, soloVariables);
 	Object.assign(self.actionDefs, soloActions);
 	Object.assign(self.muteFeedbacks, soloFeedbacks);
+	self.variableDefs.push(...soloVariables);
+
 };
 
 instance.prototype.init_strips = function () {
@@ -1700,12 +1701,9 @@ instance.prototype.init_strips = function () {
 		}
 	}
 	self.xStat = stat;
-	self.variableDefs = defVariables;
 	self.actionDefs = fadeActions;
-	Object.assign(self.actionDefs, sendActions);
-	Object.assign(self.actionDefs, muteActions);
-	Object.assign(self.actionDefs, procActions);
-	Object.assign(self.actionDefs, storeActions);
+	Object.assign(self.actionDefs, sendActions, muteActions, procActions, storeActions);
+	self.variableDefs.push(...defVariables);
 	self.muteFeedbacks = muteFeedbacks;
 	self.colorFeedbacks = colorFeedbacks;
 };
