@@ -44,8 +44,8 @@ class BAirInstance extends InstanceBase {
 		this.fLevels[161] = []
 		this.blinkingFB = {}
 		this.crossFades = {}
-		this.PollCount = 60
-		this.PollTimeout = 500
+		this.PollCount = 100
+		this.PollTimeout = 100
 		this.needStats = true
 		this.blinkOn = false
 
