@@ -43,6 +43,8 @@ Tape Operation | Stop,Play,PlayPause,Record,RecordPause,Fast Forward,Rewind of t
 
 **Note *Snapshots*:** If the Previous/Next numbered Snapshot is empty, the mixer will not change snapshots. The Save snapshot function does NOT ask for confirmation before saving/overwriting.
 
+**Note *Presets*:** There are some preset buttons included to show some common button configurations with pre-built actions and feedback indicators. They use channel 1 as a demonstration. There is also a 'Rude Solo' button available.
+
 ## Dynamic Variables
 Variable | Description
 -----------------|---------------
