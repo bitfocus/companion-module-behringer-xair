@@ -44,10 +44,6 @@ class BAirInstance extends InstanceBase {
 		this.fLevels[161] = []
 		this.blinkingFB = {}
 		this.crossFades = {}
-		this.PollCount = 100
-		this.PollTimeout = 100
-		this.needStats = true
-		this.blinkOn = false
 
 		buildConstants(this)
 	}
@@ -57,6 +53,10 @@ class BAirInstance extends InstanceBase {
 
 		// cross-fade steps per second
 		this.fadeResolution = 20
+		this.PollCount = 100
+		this.PollTimeout = 100
+		this.needStats = true
+		this.blinkOn = false
 
 		buildStripDefs(this)
 		buildSoloDefs(this)
