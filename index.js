@@ -23,6 +23,7 @@ class BAirInstance extends InstanceBase {
 		this.myMixer = {
 			name: '',
 			model: '',
+			modelNum: 0,
 			fwVersion: '',
 		}
 
@@ -43,8 +44,8 @@ class BAirInstance extends InstanceBase {
 		this.fLevels[161] = []
 		this.blinkingFB = {}
 		this.crossFades = {}
-		this.PollCount = 20
-		this.PollTimeout = 350
+		this.PollCount = 60
+		this.PollTimeout = 500
 		this.needStats = true
 		this.blinkOn = false
 

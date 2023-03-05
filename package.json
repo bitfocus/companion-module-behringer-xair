@@ -12,7 +12,8 @@
 		"url": "git+https://github.com/bitfocus/companion-module-behringer-xair.git"
 	},
 	"dependencies": {
-		"@companion-module/base": "~1.2.1"
+		"@companion-module/base": "~1.2.1",
+		"osc": "^2.4.3"
 	},
 	"devDependencies": {
 		"@companion-module/tools": "^1.1.0"
