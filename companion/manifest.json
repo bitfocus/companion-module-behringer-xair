@@ -1,0 +1,46 @@
+{
+	"id": "behringer-xair",
+	"name": "behringer-xair",
+	"shortname": "xair",
+	"description": "Module to control Midas MR and Behringer XR series mixers",
+	"version": "0.0.0",
+	"license": "MIT",
+	"repository": "git+https://github.com/bitfocus/companion-module-behringer-xair.git",
+	"bugs": "https://github.com/bitfocus/companion-module-behringer-xair/issues",
+	"maintainers": [
+		{
+			"name": "John Knight, Jr",
+			"email": "istnv@ayesti.com"
+		},
+		{
+			"name": "Per Roine",
+			"email": "per.roine@gmail.com"
+		},
+		{
+			"name": "Janos Münker"
+		}
+	],
+	"legacyIds": [
+		"xair"
+	],
+	"runtime": {
+		"type": "node18",
+		"api": "nodejs-ipc",
+		"apiVersion": "0.0.0",
+		"entrypoint": "../index.js"
+	},
+	"manufacturer": "Behringer/Midas",
+	"products": [
+		"XR/MR",
+		"XAir",
+		"XR12",
+		"XR16",
+		"X18",
+		"XR18"
+	],
+	"keywords": [
+		"Audio",
+		"Mixer",
+		"Console"
+	]
+}
