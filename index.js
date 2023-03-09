@@ -58,6 +58,8 @@ class BAirInstance extends InstanceBase {
 		this.needStats = true
 		this.blinkOn = false
 
+		this.unitsFound = {}
+		this.scanForMixers()
 		buildStripDefs(this)
 		buildSoloDefs(this)
 		buildStaticActions(this)
@@ -67,11 +69,25 @@ class BAirInstance extends InstanceBase {
 		this.buildStaticVariables()
 		this.buildPresets()
 		this.init_osc()
-		this.log('debug', Object.keys(this.xStat).length + ' status addresses')
+		this.totalVars = Object.keys(this.xStat).length
+		this.log('debug', `${this.totalVars} status addresses`)
 	}
 
-	async updateConfig(config) {
-		self.init(config)
+	async configUpdated(config) {
+		// a bit more processing than available in
+		// an upgrade script :)
+		if ('' == config.host) {
+			config.host = this.unitsFound[config.mixer].m_ip
+			this.saveConfig(config)
+		}
+		if ('' == config.mixer) {
+			for (let m in this.unitsFound) {
+				if (this.unitsFound[m].m_ip == config.host) {
+					config.mixer = m
+				}
+			}
+		}
+		this.init(config)
 	}
 
 	// When module gets deleted
@@ -90,6 +106,15 @@ class BAirInstance extends InstanceBase {
 		}
 		if (this.oscPort) {
 			this.oscPort.close()
+			delete this.oscPort
+		}
+		if (this.scanner) {
+			clearInterval(this.scanner)
+			delete this.scanner
+		}
+		if (this.scanPort) {
+			this.scanPort.close()
+			delete this.scanport
 		}
 	}
 
@@ -111,6 +136,74 @@ class BAirInstance extends InstanceBase {
 		// toggle 'blinker'
 		this.blinkOn = !this.blinkOn
 		this.checkFeedbacks(...Object.keys(this.blinkingFB))
+	}
+
+	/**
+	 *
+	 * network scanner interval
+	 */
+	probe() {
+		this.scanPort.send(
+			{
+				address: '/xinfo',
+				args: [],
+			},
+			'255.255.255.255',
+			10024
+		)
+	}
+
+	/**
+	 * Gather list of local mixer IP numbers and names
+	 */
+	scanForMixers() {
+		let self = this
+		let uPort = this.scanPort
+
+		if (!this.scanPort) {
+			uPort = this.scanPort = new OSC.UDPPort({
+				localAddress: '0.0.0.0',
+				localPort: 0,
+				broadcast: true,
+				metadata: true,
+			})
+		}
+		uPort.open()
+
+		// When the port is read, send an OSC message to, say, SuperCollider
+		uPort.on('ready', function () {
+			self.probe()
+			self.scanner = setInterval(() => {
+				self.probe()
+			}, 5000)
+		})
+
+		uPort.on('message', function (oscMsg, timeTag, info) {
+			if ('/xinfo' == oscMsg.address) {
+				let args = oscMsg.args
+				let newUnit = {
+					m_ip: args[0].value,
+					m_name: args[1].value,
+					m_model: args[2].value,
+					m_fwver: args[3].value,
+					m_modelNum: parseInt(args[2].value.match(/\d+/)[0]),
+					m_last: Date.now(),
+				}
+				self.unitsFound[newUnit.m_name] = newUnit
+				if (!self.config.mixer || self.config.mixer == '') {
+					if (newUnit.m_ip == self.config.host) {
+						self.config.mixer = newUnit.m_name
+						self.saveConfig(self.config)
+					}
+				}
+				for (let u in self.unitsFound) {
+					// remove from list if not seen in last 10 minutes
+					if (Date.now() - self.unitsFound[u].m_last > 600000) {
+						delete self.unitsFound[u]
+					}
+				}
+			}
+		})
 	}
 
 	/**
@@ -197,7 +290,7 @@ class BAirInstance extends InstanceBase {
 						color: combineRgb(255, 255, 255),
 						bgcolor: combineRgb(0, 0, 0),
 						png64: ICON_SOLO,
-					}
+					},
 				},
 			],
 		}
@@ -273,8 +366,8 @@ class BAirInstance extends InstanceBase {
 					feedbackId: 'clearsolo',
 					options: {
 						blink: 1,
-						fg: combineRgb(255,255,255),
-						bg: combineRgb(255,0,0)
+						fg: combineRgb(255, 255, 255),
+						bg: combineRgb(255, 0, 0),
 					},
 				},
 			],
@@ -303,6 +396,18 @@ class BAirInstance extends InstanceBase {
 					}
 				}
 			}
+		}
+
+		if (stillNeed && timeNow - this.timeStart > 10000) {
+			this.log('error', `${this.config.host} not responding`)
+			if (this.unitsFound[this.config.mixer] !== undefined) {
+				this.log('warn', `Resetting IP for ${this.config.mixer}`)
+				this.config.host = this.unitsFound[this.config.mixer].m_ip
+				this.saveConfig(this.config)
+				this.destroy()
+				this.init(this.config)
+			}
+			return
 		}
 
 		if (!stillNeed) {
@@ -429,7 +534,7 @@ class BAirInstance extends InstanceBase {
 				} else if (node.match(/^\/xinfo$/)) {
 					self.myMixer.name = args[1].value
 					self.myMixer.model = args[2].value
-					self.myMixer.modelNum = parseInt(args[2].value)
+					self.myMixer.modelNum = parseInt(args[2].value.match(/\d+/)[0])
 					self.myMixer.fw = args[3].value
 					self.setVariableValues({
 						'm_name': self.myMixer.name,
@@ -583,16 +688,39 @@ class BAirInstance extends InstanceBase {
 
 	// Return config fields for web config
 	getConfigFields() {
-		return [
-			{
-				type: 'textinput',
-				id: 'host',
-				label: 'Target IP',
-				tooltip: 'The IP of the MR / XR console',
-				width: 6,
-				regex: Regex.IP,
-			},
-		]
+		let cf = []
+		cf.push({
+			type: 'textinput',
+			id: 'host',
+			label: 'Target IP',
+			tooltip: 'The IP of the MR / XR console',
+			width: 6,
+			regex: Regex.IP,
+		})
+		cf.push({
+			type: 'static-text',
+			label: '---- or ----',
+			width: 12,
+		})
+		let ch = []
+		if (Object.keys(this.unitsFound).length == 0) {
+			ch = [{ id: 'none', label: 'No XAir units located' }]
+		} else {
+			let unit = this.unitsFound
+			for (let u in unit) {
+				ch.push({ id: unit[u].m_name, label: `${unit[u].m_name} (${unit[u].m_ip})` })
+			}
+		}
+		cf.push({
+			type: 'dropdown',
+			id: 'mixer',
+			label: 'Mixer Name',
+			tooltip: 'Name and IP of mixers on the network',
+			width: 12,
+			default: ch[0].id,
+			choices: ch,
+		})
+		return cf
 	}
 
 	async sendOSC(node, arg) {

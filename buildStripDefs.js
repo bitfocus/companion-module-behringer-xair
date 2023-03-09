@@ -382,11 +382,8 @@ export function buildStripDefs(self) {
 						],
 						callback: async (action, context) => {
 							const opt = action.options
-							let nVal = opt.num
-							if (opt.type == '/ch/') {
-								nVal = pad0(nVal)
-							}
-							const cmd = opt.type + nVal
+							let nVal = (opt.type == '/ch/' ? pad0(opt.num) : opt.num)
+							let cmd = opt.type + nVal
 							cmd += opt.type == '/dca/' ? '/fader' : '/mix/fader'
 							let fVal = fadeTo(action.actionId, cmd, opt, self)
 							const arg = {
