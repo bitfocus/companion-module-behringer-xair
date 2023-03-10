@@ -16,21 +16,6 @@ class BAirInstance extends InstanceBase {
 	constructor(internal) {
 		super(internal)
 
-		this.snapshot = []
-
-		this.currentSnapshot = 0
-
-		this.myMixer = {
-			name: '',
-			model: '',
-			modelNum: 0,
-			fwVersion: '',
-		}
-
-		// mixer state
-		this.xStat = {}
-		// level/fader value store
-		this.tempStore = {}
 		// stat id from mixer address
 		this.fbToStat = {}
 
@@ -50,6 +35,21 @@ class BAirInstance extends InstanceBase {
 
 	async init(config) {
 		this.config = config
+		this.snapshot = []
+
+		this.currentSnapshot = 0
+
+		this.myMixer = {
+			name: '',
+			model: '',
+			modelNum: 0,
+			fwVersion: '',
+		}
+
+		// mixer state
+		this.xStat = {}
+		// level/fader value store
+		this.tempStore = {}
 
 		// cross-fade steps per second
 		this.fadeResolution = 20
@@ -59,7 +59,10 @@ class BAirInstance extends InstanceBase {
 		this.blinkOn = false
 
 		this.unitsFound = {}
-		this.scanForMixers()
+		if (config.scan) {
+			// quick moment to pre-scan
+			await this.scanForMixers()
+		}
 		buildStripDefs(this)
 		buildSoloDefs(this)
 		buildStaticActions(this)
@@ -80,13 +83,24 @@ class BAirInstance extends InstanceBase {
 			config.host = this.unitsFound[config.mixer].m_ip
 			this.saveConfig(config)
 		}
-		if ('' == config.mixer) {
-			for (let m in this.unitsFound) {
-				if (this.unitsFound[m].m_ip == config.host) {
-					config.mixer = m
+		// do we have a name for this host?
+		if (config.scan) {
+			if (!('' == config.mixer || 'none' == config.mixer) && Object.keys(this.unitsFound).length > 0) {
+				for (let m in this.unitsFound) {
+					if (this.unitsFound[m].m_ip == config.host) {
+						config.mixer = m
+					}
+				}
+				this.saveConfig(config)
+			}
+			if (config.mixer in this.unitsFound) {
+				if (config.host != this.unitsFound[config.mixer].m_ip) {
+					config.host = this.unitsFound[config.mixer].m_ip
+					this.saveConfig(config)
 				}
 			}
 		}
+		this.destroy()	// re-start all connections in case host changed.
 		this.init(config)
 	}
 
@@ -156,7 +170,7 @@ class BAirInstance extends InstanceBase {
 	/**
 	 * Gather list of local mixer IP numbers and names
 	 */
-	scanForMixers() {
+	async scanForMixers() {
 		let self = this
 		let uPort = this.scanPort
 
@@ -400,7 +414,8 @@ class BAirInstance extends InstanceBase {
 
 		if (stillNeed && timeNow - this.timeStart > 10000) {
 			this.log('error', `${this.config.host} not responding`)
-			if (this.unitsFound[this.config.mixer] !== undefined) {
+			this.updateStatus(InstanceStatus.ConnectionFailure, `${this.config.host} not responding`)
+			if (this.config.scan && this.unitsFound[this.config.mixer] !== undefined) {
 				this.log('warn', `Resetting IP for ${this.config.mixer}`)
 				this.config.host = this.unitsFound[this.config.mixer].m_ip
 				this.saveConfig(this.config)
@@ -698,10 +713,13 @@ class BAirInstance extends InstanceBase {
 			regex: Regex.IP,
 		})
 		cf.push({
-			type: 'static-text',
-			label: '---- or ----',
+			type: 'checkbox',
+			id: 'scan',
+			label: 'Scan network for XAir mixers?',
+			default: true,
 			width: 12,
 		})
+
 		let ch = []
 		if (Object.keys(this.unitsFound).length == 0) {
 			ch = [{ id: 'none', label: 'No XAir units located' }]
@@ -714,7 +732,7 @@ class BAirInstance extends InstanceBase {
 		cf.push({
 			type: 'dropdown',
 			id: 'mixer',
-			label: 'Mixer Name',
+			label: 'Select Mixer by Name',
 			tooltip: 'Name and IP of mixers on the network',
 			width: 12,
 			default: ch[0].id,
