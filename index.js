@@ -38,6 +38,8 @@ class BAirInstance extends InstanceBase {
 		this.snapshot = []
 
 		this.currentSnapshot = 0
+		this.prevSnapshot = 0
+		this.nextSnapshot = 0
 
 		this.myMixer = {
 			name: '',
@@ -100,7 +102,7 @@ class BAirInstance extends InstanceBase {
 				}
 			}
 		}
-		this.destroy()	// re-start all connections in case host changed.
+		this.destroy() // re-start all connections in case host changed.
 		this.init(config)
 	}
 
@@ -492,7 +494,7 @@ class BAirInstance extends InstanceBase {
 				const node = message.address
 				const leaf = node.split('/').pop()
 
-				self.log('debug', `received ${node} from ${info.address}`)
+				self.log('debug', `received ${node} ${args} from ${info.address}`)
 				if (self.xStat[node] !== undefined) {
 					let v = args[0].value
 					switch (leaf) {
@@ -524,6 +526,16 @@ class BAirInstance extends InstanceBase {
 							v = v == '' ? self.xStat[node].defaultName : v
 							self.xStat[node].name = v
 							self.setVariableValues({ [self.xStat[node].fbID]: v })
+							if (node.match(/^\/\-snap\//)) {
+								let num = parseInt(node.match(/\d+/)[0])
+								if (num == self.currentSnapshot) {
+									self.setVariableValues({ 's_name': v })
+								} else if (num == self.prevSnapshot) {
+									self.setVariableValues({ 's_name_p': v })
+								} else if (num == self.nextSnapshot) {
+									self.setVariableValues({ 's_name_n': v })
+								}
+							}
 							break
 						case 'color':
 							self.xStat[node].color = v
@@ -557,10 +569,6 @@ class BAirInstance extends InstanceBase {
 						'm_modelNum': self.myMixer.modelNum,
 						'm_fw': self.myMixer.fw,
 					})
-				} else if (node.match(/^\/\-snap\/name$/)) {
-					const n = args[0].value
-					self.xStat[self.snapshot[self.currentSnapshot]].name = n
-					self.setVariableValues({ 's_name': n })
 				} else if (node.match(/^\/\-snap\/index$/)) {
 					const s = parseInt(args[0].value)
 					const n = self.xStat[self.snapshot[s]].name
@@ -569,6 +577,12 @@ class BAirInstance extends InstanceBase {
 						's_index': s,
 						's_name': n,
 						['s_name_' + pad0(s)]: n,
+					})
+					self.prevSnapshot = 1>=s ? 0 : s - 1
+					self.nextSnapshot = 64<=s ? 0 : s + 1
+					self.setVariableValues({
+						's_name_p': self.xStat[self.snapshot[self.prevSnapshot]]?.name ?? '-----',
+					 	's_name_n': self.xStat[self.snapshot[self.nextSnapshot]]?.name ?? '-----',
 					})
 					self.checkFeedbacks('snap_color')
 					self.sendOSC('/-snap/' + pad0(s) + '/name', [])
@@ -651,6 +665,14 @@ class BAirInstance extends InstanceBase {
 			{
 				name: 'Current Snapshot Index',
 				variableId: 's_index',
+			},
+			{
+				name: 'Previous Snapshot Name',
+				variableId: 's_name_p',
+			},
+			{
+				name: 'Next Snapshot Name',
+				variableId: 's_name_n',
 			},
 		]
 		variables.push.apply(variables, this.variableDefs)
