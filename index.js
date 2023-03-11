@@ -53,9 +53,10 @@ class BAirInstance extends InstanceBase {
 
 		// cross-fade steps per second
 		this.fadeResolution = 20
-		this.PollCount = 100
-		this.PollTimeout = 100
+		this.PollCount = 30
+		this.PollTimeout = 25
 		this.needStats = true
+		this.hostResponse = false
 		this.blinkOn = false
 
 		this.unitsFound = {}
@@ -412,15 +413,17 @@ class BAirInstance extends InstanceBase {
 			}
 		}
 
-		if (stillNeed && timeNow - this.timeStart > 10000) {
+		if (!this.hostResponse && stillNeed && timeNow - this.timeStart > 10000) {
 			this.log('error', `${this.config.host} not responding`)
 			this.updateStatus(InstanceStatus.ConnectionFailure, `${this.config.host} not responding`)
 			if (this.config.scan && this.unitsFound[this.config.mixer] !== undefined) {
-				this.log('warn', `Resetting IP for ${this.config.mixer}`)
-				this.config.host = this.unitsFound[this.config.mixer].m_ip
-				this.saveConfig(this.config)
-				this.destroy()
-				this.init(this.config)
+				if (this.config.host != this.unitsFound[this.config.mixer]) {
+					this.log('warn', `Resetting IP for ${this.config.mixer}`)
+					this.config.host = this.unitsFound[this.config.mixer].m_ip
+					this.saveConfig(this.config)
+					this.destroy()
+					this.init(this.config)
+				}
 			}
 			return
 		}
@@ -491,8 +494,9 @@ class BAirInstance extends InstanceBase {
 				const args = message.args
 				const node = message.address
 				const leaf = node.split('/').pop()
+				self.hostResponse = true
 
-				self.log('debug', `received ${node} from ${info.address}`)
+				// self.log('debug', `received ${node} from ${info.address}`)
 				if (self.xStat[node] !== undefined) {
 					let v = args[0].value
 					switch (leaf) {
@@ -569,6 +573,12 @@ class BAirInstance extends InstanceBase {
 						's_index': s,
 						's_name': n,
 						['s_name_' + pad0(s)]: n,
+					})
+					self.prevSnapshot = 1 >= s ? 0 : s - 1
+					self.nextSnapshot = 64 <= s ? 0 : s + 1
+					self.setVariableValues({
+						's_name_p': self.xStat[self.snapshot[self.prevSnapshot]]?.name ?? '-----',
+						's_name_n': self.xStat[self.snapshot[self.nextSnapshot]]?.name ?? '-----',
 					})
 					self.checkFeedbacks('snap_color')
 					self.sendOSC('/-snap/' + pad0(s) + '/name', [])

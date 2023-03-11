@@ -10,9 +10,11 @@ export const defStrip = [
 		'fadeID': 'fad',
 		'hasLevel': true,
 		'hasMix': true,
+		'trim': ['preamp','headamp'],
 		'proc': ['gate', 'insert', 'eq', 'dyn', 'lr'],
 		'procPfx': '',
 		'hasOn': true,
+		'hasPan': true,
 	},
 	{
 		'id': 'rtn',
@@ -25,9 +27,11 @@ export const defStrip = [
 		'fadeID': 'fad',
 		'hasLevel': true,
 		'hasMix': true,
+		'trim': ['preamp'],
 		'proc': ['eq', 'lr'],
 		'procPfx': '',
 		'hasOn': true,
+		'hasPan': false,
 	},
 	{
 		'id': 'fxsend',
@@ -43,6 +47,7 @@ export const defStrip = [
 		'proc': [],
 		'procPfx': '',
 		'hasOn': true,
+		'hasPan': false,
 	},
 	{
 		'id': 'bus',
@@ -58,6 +63,7 @@ export const defStrip = [
 		'proc': ['insert', 'eq', 'dyn', 'lr'],
 		'procPfx': '',
 		'hasOn': true,
+		'hasPan': true,
 	},
 	{
 		'id': 'dca',
@@ -72,6 +78,7 @@ export const defStrip = [
 		'hasMix': false,
 		'proc': [],
 		'hasOn': true,
+		'hasPan': false,
 	},
 	{
 		'id': 'lr',
@@ -87,6 +94,7 @@ export const defStrip = [
 		'procPfx': 'm_',
 		'proc': ['insert', 'eq', 'dyn'],
 		'hasOn': true,
+		'hasPan': true,
 	},
 	{
 		'id': 'rtn/aux',
@@ -99,9 +107,11 @@ export const defStrip = [
 		'fadeID': 'usbFad',
 		'hasLevel': true,
 		'hasMix': true,
+		'trim': ['preamp','headamp'],
 		'proc': ['eq'],
 		'procPfx': 'u_',
 		'hasOn': true,
+		'hasPan': true,
 	},
 	{
 		'id': 'config/mute',
@@ -114,5 +124,6 @@ export const defStrip = [
 		'hasMix': false,
 		'proc': [],
 		'hasOn': false,
+		'hasPan': false,
 	},
 ]

@@ -8,6 +8,7 @@ export function buildStripDefs(self) {
 	let stat = {}
 	let muteActions = {}
 	let procActions = {}
+	let trimActions = {}
 	let fadeActions = {}
 	let storeActions = {}
 	let sendActions = {}
@@ -70,8 +71,6 @@ export function buildStripDefs(self) {
 		if (defaultLabel != '' && d > 0) {
 			defaultLabel = defaultLabel + ' '
 		}
-
-		// console.log(`${chID}${muteSfx}, ${fadeSfx}`);
 
 		// additional strip toggles
 
