@@ -30,6 +30,14 @@ class BAirInstance extends InstanceBase {
 		this.blinkingFB = {}
 		this.crossFades = {}
 
+		if (process.env.DEVELOPER) {
+			this.PollCount = 125
+			this.PollTimeout = 100
+		} else {
+			this.PollCount = 30
+			this.PollTimeout = 25
+		}
+
 		buildConstants(this)
 	}
 
@@ -55,8 +63,6 @@ class BAirInstance extends InstanceBase {
 
 		// cross-fade steps per second
 		this.fadeResolution = 20
-		this.PollCount = 30
-		this.PollTimeout = 25
 		this.needStats = true
 		this.hostResponse = false
 		this.blinkOn = false
