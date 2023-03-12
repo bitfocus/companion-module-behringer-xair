@@ -16,21 +16,6 @@ class BAirInstance extends InstanceBase {
 	constructor(internal) {
 		super(internal)
 
-		this.snapshot = []
-
-		this.currentSnapshot = 0
-
-		this.myMixer = {
-			name: '',
-			model: '',
-			modelNum: 0,
-			fwVersion: '',
-		}
-
-		// mixer state
-		this.xStat = {}
-		// level/fader value store
-		this.tempStore = {}
 		// stat id from mixer address
 		this.fbToStat = {}
 
@@ -45,19 +30,48 @@ class BAirInstance extends InstanceBase {
 		this.blinkingFB = {}
 		this.crossFades = {}
 
+		if (process.env.DEVELOPER) {
+			this.PollCount = 125
+			this.PollTimeout = 100
+		} else {
+			this.PollCount = 30
+			this.PollTimeout = 25
+		}
+
 		buildConstants(this)
 	}
 
 	async init(config) {
 		this.config = config
+		this.snapshot = []
+
+		this.currentSnapshot = 0
+		this.prevSnapshot = 0
+		this.nextSnapshot = 0
+
+		this.myMixer = {
+			name: '',
+			model: '',
+			modelNum: 0,
+			fwVersion: '',
+		}
+
+		// mixer state
+		this.xStat = {}
+		// level/fader value store
+		this.tempStore = {}
 
 		// cross-fade steps per second
 		this.fadeResolution = 20
-		this.PollCount = 100
-		this.PollTimeout = 100
 		this.needStats = true
+		this.hostResponse = false
 		this.blinkOn = false
 
+		this.unitsFound = {}
+		if (config.scan) {
+			// quick moment to pre-scan
+			await this.scanForMixers()
+		}
 		buildStripDefs(this)
 		buildSoloDefs(this)
 		buildStaticActions(this)
@@ -67,11 +81,36 @@ class BAirInstance extends InstanceBase {
 		this.buildStaticVariables()
 		this.buildPresets()
 		this.init_osc()
-		this.log('debug', Object.keys(this.xStat).length + ' status addresses')
+		this.totalVars = Object.keys(this.xStat).length
+		this.log('debug', `${this.totalVars} status addresses`)
 	}
 
-	async updateConfig(config) {
-		self.init(config)
+	async configUpdated(config) {
+		// a bit more processing than available in
+		// an upgrade script :)
+		if ('' == config.host) {
+			config.host = this.unitsFound[config.mixer].m_ip
+			this.saveConfig(config)
+		}
+		// do we have a name for this host?
+		if (config.scan) {
+			if (!('' == config.mixer || 'none' == config.mixer) && Object.keys(this.unitsFound).length > 0) {
+				for (let m in this.unitsFound) {
+					if (this.unitsFound[m].m_ip == config.host) {
+						config.mixer = m
+					}
+				}
+				this.saveConfig(config)
+			}
+			if (config.mixer in this.unitsFound) {
+				if (config.host != this.unitsFound[config.mixer].m_ip) {
+					config.host = this.unitsFound[config.mixer].m_ip
+					this.saveConfig(config)
+				}
+			}
+		}
+		this.destroy() // re-start all connections in case host changed.
+		this.init(config)
 	}
 
 	// When module gets deleted
@@ -90,6 +129,15 @@ class BAirInstance extends InstanceBase {
 		}
 		if (this.oscPort) {
 			this.oscPort.close()
+			delete this.oscPort
+		}
+		if (this.scanner) {
+			clearInterval(this.scanner)
+			delete this.scanner
+		}
+		if (this.scanPort) {
+			this.scanPort.close()
+			delete this.scanport
 		}
 	}
 
@@ -111,6 +159,74 @@ class BAirInstance extends InstanceBase {
 		// toggle 'blinker'
 		this.blinkOn = !this.blinkOn
 		this.checkFeedbacks(...Object.keys(this.blinkingFB))
+	}
+
+	/**
+	 *
+	 * network scanner interval
+	 */
+	probe() {
+		this.scanPort.send(
+			{
+				address: '/xinfo',
+				args: [],
+			},
+			'255.255.255.255',
+			10024
+		)
+	}
+
+	/**
+	 * Gather list of local mixer IP numbers and names
+	 */
+	async scanForMixers() {
+		let self = this
+		let uPort = this.scanPort
+
+		if (!this.scanPort) {
+			uPort = this.scanPort = new OSC.UDPPort({
+				localAddress: '0.0.0.0',
+				localPort: 0,
+				broadcast: true,
+				metadata: true,
+			})
+		}
+		uPort.open()
+
+		// When the port is read, send an OSC message to, say, SuperCollider
+		uPort.on('ready', function () {
+			self.probe()
+			self.scanner = setInterval(() => {
+				self.probe()
+			}, 5000)
+		})
+
+		uPort.on('message', function (oscMsg, timeTag, info) {
+			if ('/xinfo' == oscMsg.address) {
+				let args = oscMsg.args
+				let newUnit = {
+					m_ip: args[0].value,
+					m_name: args[1].value,
+					m_model: args[2].value,
+					m_fwver: args[3].value,
+					m_modelNum: parseInt(args[2].value.match(/\d+/)[0]),
+					m_last: Date.now(),
+				}
+				self.unitsFound[newUnit.m_name] = newUnit
+				if (!self.config.mixer || self.config.mixer == '') {
+					if (newUnit.m_ip == self.config.host) {
+						self.config.mixer = newUnit.m_name
+						self.saveConfig(self.config)
+					}
+				}
+				for (let u in self.unitsFound) {
+					// remove from list if not seen in last 10 minutes
+					if (Date.now() - self.unitsFound[u].m_last > 600000) {
+						delete self.unitsFound[u]
+					}
+				}
+			}
+		})
 	}
 
 	/**
@@ -197,7 +313,7 @@ class BAirInstance extends InstanceBase {
 						color: combineRgb(255, 255, 255),
 						bgcolor: combineRgb(0, 0, 0),
 						png64: ICON_SOLO,
-					}
+					},
 				},
 			],
 		}
@@ -273,8 +389,8 @@ class BAirInstance extends InstanceBase {
 					feedbackId: 'clearsolo',
 					options: {
 						blink: 1,
-						fg: combineRgb(255,255,255),
-						bg: combineRgb(255,0,0)
+						fg: combineRgb(255, 255, 255),
+						bg: combineRgb(255, 0, 0),
 					},
 				},
 			],
@@ -303,6 +419,21 @@ class BAirInstance extends InstanceBase {
 					}
 				}
 			}
+		}
+
+		if (!this.hostResponse && stillNeed && timeNow - this.timeStart > 10000) {
+			this.log('error', `${this.config.host} not responding`)
+			this.updateStatus(InstanceStatus.ConnectionFailure, `${this.config.host} not responding`)
+			if (this.config.scan && this.unitsFound[this.config.mixer] !== undefined) {
+				if (this.config.host != this.unitsFound[this.config.mixer]) {
+					this.log('warn', `Resetting IP for ${this.config.mixer}`)
+					this.config.host = this.unitsFound[this.config.mixer].m_ip
+					this.saveConfig(this.config)
+					this.destroy()
+					this.init(this.config)
+				}
+			}
+			return
 		}
 
 		if (!stillNeed) {
@@ -371,8 +502,9 @@ class BAirInstance extends InstanceBase {
 				const args = message.args
 				const node = message.address
 				const leaf = node.split('/').pop()
+				self.hostResponse = true
 
-				self.log('debug', `received ${node} from ${info.address}`)
+				// self.log('debug', `received ${node} ${args} from ${info.address}`)
 				if (self.xStat[node] !== undefined) {
 					let v = args[0].value
 					switch (leaf) {
@@ -404,6 +536,16 @@ class BAirInstance extends InstanceBase {
 							v = v == '' ? self.xStat[node].defaultName : v
 							self.xStat[node].name = v
 							self.setVariableValues({ [self.xStat[node].fbID]: v })
+							if (node.match(/^\/\-snap\//)) {
+								let num = parseInt(node.match(/\d+/)[0])
+								if (num == self.currentSnapshot) {
+									self.setVariableValues({ 's_name': v })
+								} else if (num == self.prevSnapshot) {
+									self.setVariableValues({ 's_name_p': v })
+								} else if (num == self.nextSnapshot) {
+									self.setVariableValues({ 's_name_n': v })
+								}
+							}
 							break
 						case 'color':
 							self.xStat[node].color = v
@@ -429,7 +571,7 @@ class BAirInstance extends InstanceBase {
 				} else if (node.match(/^\/xinfo$/)) {
 					self.myMixer.name = args[1].value
 					self.myMixer.model = args[2].value
-					self.myMixer.modelNum = parseInt(args[2].value)
+					self.myMixer.modelNum = parseInt(args[2].value.match(/\d+/)[0])
 					self.myMixer.fw = args[3].value
 					self.setVariableValues({
 						'm_name': self.myMixer.name,
@@ -437,10 +579,6 @@ class BAirInstance extends InstanceBase {
 						'm_modelNum': self.myMixer.modelNum,
 						'm_fw': self.myMixer.fw,
 					})
-				} else if (node.match(/^\/\-snap\/name$/)) {
-					const n = args[0].value
-					self.xStat[self.snapshot[self.currentSnapshot]].name = n
-					self.setVariableValues({ 's_name': n })
 				} else if (node.match(/^\/\-snap\/index$/)) {
 					const s = parseInt(args[0].value)
 					const n = self.xStat[self.snapshot[s]].name
@@ -449,6 +587,12 @@ class BAirInstance extends InstanceBase {
 						's_index': s,
 						's_name': n,
 						['s_name_' + pad0(s)]: n,
+					})
+					self.prevSnapshot = 1>=s ? 0 : s - 1
+					self.nextSnapshot = 64<=s ? 0 : s + 1
+					self.setVariableValues({
+						's_name_p': self.xStat[self.snapshot[self.prevSnapshot]]?.name ?? '-----',
+					 	's_name_n': self.xStat[self.snapshot[self.nextSnapshot]]?.name ?? '-----',
 					})
 					self.checkFeedbacks('snap_color')
 					self.sendOSC('/-snap/' + pad0(s) + '/name', [])
@@ -532,6 +676,14 @@ class BAirInstance extends InstanceBase {
 				name: 'Current Snapshot Index',
 				variableId: 's_index',
 			},
+			{
+				name: 'Previous Snapshot Name',
+				variableId: 's_name_p',
+			},
+			{
+				name: 'Next Snapshot Name',
+				variableId: 's_name_n',
+			},
 		]
 		variables.push.apply(variables, this.variableDefs)
 
@@ -583,16 +735,42 @@ class BAirInstance extends InstanceBase {
 
 	// Return config fields for web config
 	getConfigFields() {
-		return [
-			{
-				type: 'textinput',
-				id: 'host',
-				label: 'Target IP',
-				tooltip: 'The IP of the MR / XR console',
-				width: 6,
-				regex: Regex.IP,
-			},
-		]
+		let cf = []
+		cf.push({
+			type: 'textinput',
+			id: 'host',
+			label: 'Target IP',
+			tooltip: 'The IP of the MR / XR console',
+			width: 6,
+			regex: Regex.IP,
+		})
+		cf.push({
+			type: 'checkbox',
+			id: 'scan',
+			label: 'Scan network for XAir mixers?',
+			default: true,
+			width: 12,
+		})
+
+		let ch = []
+		if (Object.keys(this.unitsFound).length == 0) {
+			ch = [{ id: 'none', label: 'No XAir units located' }]
+		} else {
+			let unit = this.unitsFound
+			for (let u in unit) {
+				ch.push({ id: unit[u].m_name, label: `${unit[u].m_name} (${unit[u].m_ip})` })
+			}
+		}
+		cf.push({
+			type: 'dropdown',
+			id: 'mixer',
+			label: 'Select Mixer by Name',
+			tooltip: 'Name and IP of mixers on the network',
+			width: 12,
+			default: ch[0].id,
+			choices: ch,
+		})
+		return cf
 	}
 
 	async sendOSC(node, arg) {

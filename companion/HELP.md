@@ -7,6 +7,12 @@ to get additional information about the consoles and their capabilities.
 ## Configuration
 **Target IP:** Enter the IP address of the Mixer
 
+**Scan for XAir Mixers?** Module will scan for XAir mixers on the network
+
+**Select mixer by Name** Choose a mixer from those located on the network
+
+**Note* Once a mixer (name) is chosen, the module will attempt to re-locate it if the IP changes. This feature can be disabled by un-checking the *Scan for Mixers* option
+
 ## Supported Actions
 Console Function | What it does
 -----------------|---------------
@@ -53,6 +59,8 @@ Variable | Description
 **$(INSTANCENAME:m_fw)** | Mixer Firmware
 **$(INSTANCENAME:s_name)** | Current Snapshot Name
 **$(INSTANCENAME:s_index)** | Current Snapshot Number
+**$(INSTANCENAME:s_name_n)** | Next Snapshot Name
+**$(INSTANCENAME:s_name_p)** | Prior Snapshot Name
 **$(INSTANCENAME:s_name_{num})** | Name of Snapshot {num} **see notes*
 **$(INSTANCENAME:l_lr)** | Label on LR/Main
 **$(INSTANCENAME:l_rtn_aux)** | Label on USB/Aux return

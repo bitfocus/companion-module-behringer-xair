@@ -1,3 +1,4 @@
+'use strict'
 import { defStrip } from './defStrip.js'
 import { combineRgb, Regex } from '@companion-module/base'
 import { pad0, unSlash, setToggle, fadeTo } from './helpers.js'
@@ -8,6 +9,7 @@ export function buildStripDefs(self) {
 	let stat = {}
 	let muteActions = {}
 	let procActions = {}
+	let trimActions = {}
 	let fadeActions = {}
 	let storeActions = {}
 	let sendActions = {}
@@ -70,8 +72,6 @@ export function buildStripDefs(self) {
 		if (defaultLabel != '' && d > 0) {
 			defaultLabel = defaultLabel + ' '
 		}
-
-		// console.log(`${chID}${muteSfx}, ${fadeSfx}`);
 
 		// additional strip toggles
 
@@ -154,7 +154,7 @@ export function buildStripDefs(self) {
 							const opt = action.options
 							const nVal = opt.type == '/ch/' ? pad0(opt.num) : opt.num
 							const cmd =
-								action.actionId == 'lr' ? opt.type + nVal + '/mix/lr' : opt.type + nval + '/' + action.actionId + '/on'
+								action.actionId == 'lr' ? opt.type + nVal + '/mix/lr' : opt.type + nVal + '/' + action.actionId + '/on'
 							const arg = {
 								type: 'i',
 								value: setToggle(self.xStat[cmd].isOn, opt.set),
@@ -382,11 +382,8 @@ export function buildStripDefs(self) {
 						],
 						callback: async (action, context) => {
 							const opt = action.options
-							let nVal = opt.num
-							if (opt.type == '/ch/') {
-								nVal = pad0(nVal)
-							}
-							const cmd = opt.type + nVal
+							let nVal = (opt.type == '/ch/' ? pad0(opt.num) : opt.num)
+							let cmd = opt.type + nVal
 							cmd += opt.type == '/dca/' ? '/fader' : '/mix/fader'
 							let fVal = fadeTo(action.actionId, cmd, opt, self)
 							const arg = {
@@ -429,7 +426,7 @@ export function buildStripDefs(self) {
 							if (opt.type == '/ch/') {
 								nVal = pad0(nVal)
 							}
-							const strip = opt.type + nVal
+							let strip = opt.type + nVal
 							strip += opt.type == '/dca/' ? '/fader' : '/mix/fader'
 							fadeTo(action.actionId, strip, opt, self)
 						},
@@ -467,7 +464,7 @@ export function buildStripDefs(self) {
 							if (opt.type == '/ch/') {
 								nVal = pad0(nVal)
 							}
-							const strip = opt.type + nVal
+							let strip = opt.type + nVal
 							strip += opt.type == '/dca/' ? '/fader' : '/mix/fader'
 							let fVal = fadeTo(action.actionId, strip, opt, self)
 							const arg = {
@@ -530,8 +527,8 @@ export function buildStripDefs(self) {
 
 				fadeActions[fadeID + '_a'].options.push({
 					type: 'number',
-					tooltip: 'Move fader +/- percent.\nFader Percent:\n0 = -oo, 75 = 0db, 100 = +10db',
-					label: 'Adjust',
+					tooltip: 'Move fader +/- percent.',
+					label: 'Adjust By',
 					id: 'ticks',
 					min: -100,
 					max: 100,
@@ -675,9 +672,8 @@ export function buildStripDefs(self) {
 							nVal = parseInt(opt.chNum) + '/'
 						}
 						const bVal = pad0(opt.busNum)
-						const strip = opt.type + nval + 'mix/' + bVal + '/level'
-						let fVal = fadeTo(action.actionId, strip, opt, self)
-						self.sendOSC(strip, { type: 'f', value: fVal })
+						const strip = opt.type + nVal + 'mix/' + bVal + '/level'
+						fadeTo(action.actionId, strip, opt, self)
 					},
 				}
 
@@ -715,8 +711,8 @@ export function buildStripDefs(self) {
 						},
 						{
 							type: 'number',
-							title: 'Move fader +/- percent.\nFader percent:\n0 = -oo, 75 = 0db, 100 = +10db',
-							label: 'Adjust',
+							title: 'Move fader +/- percent.',
+							label: 'Adjust by',
 							id: 'ticks',
 							min: -100,
 							max: 100,
@@ -732,7 +728,7 @@ export function buildStripDefs(self) {
 							nVal = parseInt(opt.chNum) + '/'
 						}
 						const bVal = pad0(opt.busNum)
-						const strip = opt.type + nval + 'mix/' + bVal + '/level'
+						let strip = opt.type + nVal + 'mix/' + bVal + '/level'
 						let fVal = fadeTo(action.actionId, strip, opt, self)
 						self.sendOSC(strip, { type: 'f', value: fVal })
 					},
@@ -751,7 +747,7 @@ export function buildStripDefs(self) {
 				}
 
 				storeActions[sendID + '_s'] = {
-					label: 'Store Send Level',
+					name: 'Store Send Level',
 					options: [
 						{
 							type: 'dropdown',
@@ -791,7 +787,7 @@ export function buildStripDefs(self) {
 							choices: [
 								{
 									id: 'me',
-									label: 'Channel',
+									label: 'Channel Send',
 								},
 								...self.STORE_LOCATION,
 							],
@@ -806,13 +802,13 @@ export function buildStripDefs(self) {
 							nVal = parseInt(opt.chNum) + '/'
 						}
 						const bVal = pad0(opt.busNum)
-						const strip = opt.type + nval + 'mix/' + bVal + '/level'
+						const strip = opt.type + nVal + 'mix/' + bVal + '/level'
 						fadeTo(action.actionId, strip, opt, self)
 					},
 				}
 
 				storeActions[sendID + '_r'] = {
-					label: 'Recall Send Level',
+					name: 'Recall Send Level',
 					options: [
 						{
 							type: 'dropdown',
@@ -852,7 +848,7 @@ export function buildStripDefs(self) {
 							choices: [
 								{
 									id: 'me',
-									label: 'Channel',
+									label: 'Channel Send',
 								},
 								...self.STORE_LOCATION,
 							],
@@ -867,7 +863,7 @@ export function buildStripDefs(self) {
 							nVal = parseInt(opt.chNum) + '/'
 						}
 						const bVal = pad0(opt.busNum)
-						const strip = opt.type + nval + 'mix/' + bVal + '/level'
+						const strip = opt.type + nVal + 'mix/' + bVal + '/level'
 						let fVal = fadeTo(action.actionId, strip, opt, self)
 						self.sendOSC(strip, { type: 'f', value: fVal })
 					},
