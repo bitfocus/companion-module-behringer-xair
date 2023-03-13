@@ -70,7 +70,7 @@ class BAirInstance extends InstanceBase {
 		this.unitsFound = {}
 		if (config.scan) {
 			// quick moment to pre-scan
-			await this.scanForMixers()
+			this.scanForMixers()
 		}
 		buildStripDefs(this)
 		buildSoloDefs(this)
