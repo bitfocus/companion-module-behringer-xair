@@ -476,7 +476,7 @@ export function buildStripDefs(self) {
 					}
 				} else {
 					// Main LR, Aux/USB
-					const strip = '/lr/mix/fader'
+					const strip = fadeID = 'mFad' ? '/lr/mix/fader' : '/rtn/aux/mix/fader'
 					fadeActions[fadeID] = {
 						name: theStrip.description + ' Fader Set',
 						options: [],
@@ -500,7 +500,7 @@ export function buildStripDefs(self) {
 						options: [],
 						callback: async (action, context) => {
 							const opt = action.options
-							fadeTo(action.actionId, '/lr/mix/fader', opt, self)
+							fadeTo(action.actionId, strip, opt, self)
 							// internal only, fadeTo handles the 'store'
 						},
 					}
