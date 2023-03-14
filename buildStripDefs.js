@@ -476,7 +476,7 @@ export function buildStripDefs(self) {
 					}
 				} else {
 					// Main LR, Aux/USB
-					const strip = fadeID = 'mFad' ? '/lr/mix/fader' : '/rtn/aux/mix/fader'
+					const strip = fadeID == 'mFad' ? '/lr/mix/fader' : '/rtn/aux/mix/fader'
 					fadeActions[fadeID] = {
 						name: theStrip.description + ' Fader Set',
 						options: [],
