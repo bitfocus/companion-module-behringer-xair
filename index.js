@@ -89,8 +89,11 @@ class BAirInstance extends InstanceBase {
 		// a bit more processing than available in
 		// an upgrade script :)
 		if ('' == config.host) {
-			config.host = this.unitsFound[config.mixer].m_ip
-			this.saveConfig(config)
+			let u = this.unitsFound[config.mixer]
+			if (u) {
+				config.host = u
+				this.saveConfig(config)
+			}
 		}
 		// do we have a name for this host?
 		if (config.scan) {
@@ -488,7 +491,10 @@ class BAirInstance extends InstanceBase {
 		if (this.oscPort) {
 			this.oscPort.close()
 		}
-		if (this.config.host) {
+		if (!this.config.host) {
+			this.updateStatus(InstanceStatus.ConnectionFailure,'No host IP')
+		} else {
+//		if (this.config.host) {
 			this.oscPort = new OSC.UDPPort({
 				localAddress: '0.0.0.0',
 				localPort: 0,
@@ -588,11 +594,11 @@ class BAirInstance extends InstanceBase {
 						's_name': n,
 						['s_name_' + pad0(s)]: n,
 					})
-					self.prevSnapshot = 1>=s ? 0 : s - 1
-					self.nextSnapshot = 64<=s ? 0 : s + 1
+					self.prevSnapshot = 1 >= s ? 0 : s - 1
+					self.nextSnapshot = 64 <= s ? 0 : s + 1
 					self.setVariableValues({
 						's_name_p': self.xStat[self.snapshot[self.prevSnapshot]]?.name ?? '-----',
-					 	's_name_n': self.xStat[self.snapshot[self.nextSnapshot]]?.name ?? '-----',
+						's_name_n': self.xStat[self.snapshot[self.nextSnapshot]]?.name ?? '-----',
 					})
 					self.checkFeedbacks('snap_color')
 					self.sendOSC('/-snap/' + pad0(s) + '/name', [])
