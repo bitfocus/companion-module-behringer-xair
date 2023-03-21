@@ -29,14 +29,17 @@ class BAirInstance extends InstanceBase {
 		this.fLevels[161] = []
 		this.blinkingFB = {}
 		this.crossFades = {}
+		this.unitsFound = {}
 
-		if (process.env.DEVELOPER) {
-			this.PollCount = 125
-			this.PollTimeout = 100
-		} else {
-			this.PollCount = 30
-			this.PollTimeout = 25
-		}
+		this.PollCount = 30
+		this.PollTimeout = 25
+
+		let po = 10024
+		// random local port for each instance
+		internal.id.split('').forEach(function (c) {
+			po += c.charCodeAt(0);
+		});
+		this.port_offset = po;
 
 		buildConstants(this)
 	}
@@ -497,7 +500,7 @@ class BAirInstance extends InstanceBase {
 //		if (this.config.host) {
 			this.oscPort = new OSC.UDPPort({
 				localAddress: '0.0.0.0',
-				localPort: 0,
+				localPort: this.port_offset,
 				remoteAddress: this.config.host,
 				remotePort: 10024,
 				metadata: true,
@@ -748,6 +751,7 @@ class BAirInstance extends InstanceBase {
 			label: 'Target IP',
 			tooltip: 'The IP of the MR / XR console',
 			width: 6,
+			default: '0.0.0.0',
 			regex: Regex.IP,
 		})
 		cf.push({
@@ -759,7 +763,7 @@ class BAirInstance extends InstanceBase {
 		})
 
 		let ch = []
-		if (Object.keys(this.unitsFound).length == 0) {
+		if (Object.keys(this.unitsFound || {}).length == 0) {
 			ch = [{ id: 'none', label: 'No XAir units located' }]
 		} else {
 			let unit = this.unitsFound
