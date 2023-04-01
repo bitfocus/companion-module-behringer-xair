@@ -537,7 +537,7 @@ export function buildStripDefs(self) {
 
 				fadeActions[fadeID + '_a'].options.push({
 					type: 'checkbox',
-					tooltip: 'Limit fader adjustment to 0dBfs maximum, if the adjustment were to go above 0dB, it will go back to 0dB',
+					tooltip: 'Limit the fader to 0.0dB max:\nIf the adjustment were to set it above 0.0dB, it will rather aim for 0.0dB.',
 					label: 'Limit to 0dB maximum',
 					id: 'faderLim',
 					default: 0,
