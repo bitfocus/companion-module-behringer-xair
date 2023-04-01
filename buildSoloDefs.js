@@ -1,5 +1,5 @@
 import { combineRgb, InstanceStatus } from '@companion-module/base'
-import { pad0, unSlash, setToggle } from './helpers.js'
+import { pad0, unSlash, setToggle, fadeTo } from './helpers.js'
 import { ICON_SOLO } from './icons.js'
 import { defSolo } from './defSolo.js'
 
@@ -7,7 +7,6 @@ import { defSolo } from './defSolo.js'
 // injects results to the base module via self
 export function buildSoloDefs(self) {
 	// var c, i, ch, cm, cMap, id, actID, soloID, cmd, pfx
-
 	let stat = {}
 	let soloFbToStat = {}
 	let soloActions = {}
@@ -187,6 +186,13 @@ export function buildSoloDefs(self) {
 									min: -100,
 									max: 100,
 									default: 1,
+								},
+								{
+									type: 'checkbox',
+									tooltip: 'If the adjustment were to set the fader above 0.0dB, it will rather aim for 0.0dB',
+									label: 'Limit fader to 0.0dB maximum',
+									id: 'faderLim',
+									default: 0,
 								},
 							],
 							callback: async (action, context) => {
