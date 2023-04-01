@@ -726,6 +726,13 @@ export function buildStripDefs(self) {
 							max: 100,
 							default: 1,
 						},
+						{
+							type: 'checkbox',
+							tooltip: 'If the adjustment were to set the fader above 0.0dB, it will rather aim for 0.0dB',
+							label: 'Limit fader to 0.0dB maximum',
+							id: 'faderLim',
+							default: 0,
+						}
 					],
 					callback: async (action, context) => {
 						const opt = action.options
