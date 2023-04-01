@@ -37,7 +37,7 @@ export function fadeTo(cmd, strip, opt, self) {
 			// byVal = (opTicks * steps) / 100
 			// newIdx = Math.min(steps - 1, Math.max(0, oldIdx + Math.round(byVal)))
 			r = self.fLevels[steps][newIdx]
-			// If fader is at more than 0dB  revert to 0dB, dependant on the "Limit faders to 0dB Max" checkbox in the button settings
+			// If fader is at more than 0dB, revert to 0dB, dependant on the "Limit faders to 0dB Max" checkbox in the button settings
 			if (faderLim) r = Math.min(r, 0.75)
 			break
 		case '_r': // restore
@@ -71,7 +71,7 @@ export function fadeTo(cmd, strip, opt, self) {
 		}
 	}
 
-	self.log('info', `---------- ${oldIdx} , ${newIdx}, ${byVal}, ${r}----------`);
+	// self.log('debug',`---------- ${oldIdx}:${oldVal} by ${byVal}(${opTicks}) fadeTo ${newIdx}:${r} ----------`);
 
 	return r
 }
