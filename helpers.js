@@ -22,6 +22,7 @@ export function fadeTo(cmd, strip, opt, self) {
 
 
 	const opTicks = parseInt(opt.ticks)
+	const faderLim = opt.faderLim
 	const steps = stat.fSteps
 	const span = parseFloat(opt.duration)
 	const oldVal = stat[node]
@@ -67,6 +68,11 @@ export function fadeTo(cmd, strip, opt, self) {
 			r = oldVal + xDelta
 		}
 	}
+
+	// If fader is at more than 0dB, or 0,75f, revert to 0,75, dependant on the "Limit faders to 0dB Max" checkbox in the module settings
+	/* if (faderLim) r = Math.min(r, 0.75); */
+
 	// self.log('debug',`---------- ${oldIdx}:${oldVal} by ${byVal}(${opTicks}) fadeTo ${newIdx}:${r} ----------`);
+
 	return r
 }
