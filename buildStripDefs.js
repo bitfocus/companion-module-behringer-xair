@@ -10,15 +10,22 @@ export function buildStripDefs(self) {
 	let muteActions = {}
 	let procActions = {}
 	let trimActions = {}
-	let fadeActions = {}
-	let storeActions = {}
-	let sendActions = {}
+	// let fadeActions = {}
+	// let storeActions = {}
+	let levelActions = {}
 	let muteFeedbacks = {}
 	let colorFeedbacks = {}
 	let defVariables = []
 	let fbToStat = {}
 
 	let busOpts = []
+
+	const levelOpts = [
+		{ op: '', act: 'Set' },
+		{ op: '_a', act: 'Adjust' },
+		{ op: '_s', act: 'Store' },
+		{ op: '_r', act: 'Recall' },
+	]
 
 	const defProc = {
 		insert: {
@@ -58,6 +65,182 @@ export function buildStripDefs(self) {
 		return d + (min == 0 ? '' : ' ' + min + '-' + max)
 	}
 
+	function makeLevelActions(id, aLabel, aId, theStrip) {
+		for (let sfx of levelOpts) {
+			const newName = aLabel + ` Level ${sfx.act}`
+			const newLabel = 'send' != id ? aLabel : sendLabel(theStrip.description, theStrip.min, theStrip.max)
+			const newId = id + sfx.op
+			if (levelActions[newId] !== undefined) {
+				// add strip option to action
+
+				levelActions[newId].options[0].choices.push({
+					id: aId,
+					label: newLabel,
+				})
+				levelActions[newId].options[1].label += ', ' + theStrip.description
+			} else {
+				// new action
+				levelActions[newId] = {
+					name: newName,
+					options: [], // default empty
+				}
+				if (theStrip.digits > 0) {
+					levelActions[newId].options = [
+						{
+							type: 'dropdown',
+							label: 'Type',
+							id: 'type',
+							choices: [
+								{
+									id: aId,
+									label: newLabel,
+								},
+							],
+							default: aId,
+						},
+						{
+							type: 'number',
+							label: theStrip.description,
+							id: 'num',
+							default: 1,
+							min: theStrip.min,
+							max: theStrip.max,
+							range: false,
+							required: true,
+						},
+					]
+					levelActions[newId].callback = async (action, context) => {
+						const opt = action.options
+						const aId = action.actionId
+						const nVal = opt.type == '/ch/' ? pad0(opt.num) : opt.num
+						const strip = opt.type + nVal + (opt.type == '/dca/' ? '/fader' : '/mix/fader')
+						let fVal = fadeTo(aId, strip, opt, self)
+						if ('_s' != aId.slice(-2)) {
+							// store is local, no console command
+							self.sendOSC(strip, { type: 'f', value: fVal })
+						}
+					}
+				} else {
+					// Main LR
+					const strip = newId.match(/^mFad/) ? '/lr/mix/fader' : '/rtn/aux/mix/fader'
+					levelActions[newId].callback = async (action, context) => {
+						const opt = action.options
+						const aId = action.actionId
+						const fVal = fadeTo(aId, strip, opt, self)
+						if ('_s' != aId.slice(-2)) {
+							// store is local, no console command
+							self.sendOSC(strip, { type: 'f', value: fVal })
+						}
+					}
+				}
+				if (theStrip.hasLevel && 'send' == id) {
+					// bus sends
+					levelActions[newId].options.push({
+						type: 'dropdown',
+						label: 'Bus',
+						id: 'busNum',
+						choices: busOpts,
+						default: 1,
+					})
+					levelActions[newId].callback = async (action, context) => {
+						const opt = action.options
+						const aId = action.actionId
+						let nVal = ''
+						if (opt.type == '/ch/') {
+							nVal = pad0(opt.num) + '/'
+						} else if (opt.type == '/rtn/') {
+							nVal = parseInt(opt.num) + '/'
+						}
+						const bVal = pad0(opt.busNum)
+						const strip = opt.type + nVal + 'mix/' + bVal + '/level'
+						const fVal = fadeTo(aId, strip, opt, self)
+						if ('_s' != aId.slice(-2)) {
+							// store is local, no console command
+							self.sendOSC(strip, { type: 'f', value: fVal })
+						}
+					}
+				}
+				if (theStrip.hasOn) {
+					switch (sfx.op) {
+						case '':
+							levelActions[newId].options.push({
+								type: 'dropdown',
+								label: 'Fader Level',
+								id: 'fad',
+								default: '0.0',
+								choices: self.FADER_VALUES,
+							})
+							break
+						case '_a':
+							levelActions[newId].options.push({
+								type: 'number',
+								tooltip: 'Move fader +/- percent.',
+								label: 'Adjust By',
+								id: 'ticks',
+								min: -100,
+								max: 100,
+								default: 1,
+							})
+							break
+						case '_s':
+							levelActions[newId].options.push({
+								type: 'dropdown',
+								tooltip: 'Store fader value for later recall',
+								label: 'Where',
+								id: 'store',
+								default: 'me',
+								choices: [
+									{
+										id: 'me',
+										label: 'Channel',
+									},
+									...self.STORE_LOCATION,
+								],
+							})
+							break
+						case '_r':
+							levelActions[newId].options.push({
+								type: 'dropdown',
+								tooltip: 'Recall stored fader value',
+								label: 'From',
+								id: 'store',
+								default: 'me',
+								choices: [
+									{
+										id: 'me',
+										label: 'Channel',
+									},
+									...self.STORE_LOCATION,
+								],
+							})
+					}
+
+					if (sfx.op != '_s') {
+						// all but store have a fade time
+						levelActions[newId].options.push(...[
+							{
+								type: 'number',
+								label: 'Fade Duration (ms)',
+								id: 'duration',
+								default: 0,
+								min: 0,
+								step: 10,
+								max: 60000,
+							},
+							{
+								type: 'checkbox',
+								tooltip: 'This prevents the fader level from going above 0db (75%)',
+								label: 'Limit fader to 0.0dB',
+								id: 'faderLim',
+								default: 0,
+							},
+						])
+					}
+				}
+			}
+		}
+	}
+
 	for (const theStrip of defStrip) {
 		let fbID = theStrip.id
 		let chID = '/' + fbID
@@ -73,7 +256,7 @@ export function buildStripDefs(self) {
 			defaultLabel = defaultLabel + ' '
 		}
 
-		// additional strip toggles
+		// strip process toggles
 
 		for (let p of theStrip.proc) {
 			const mID = theStrip.procPfx + p
@@ -96,12 +279,12 @@ export function buildStripDefs(self) {
 					],
 					callback: async (action, context) => {
 						const p = action.actionId.split('_')
-						const cmd = p[0] == 'm' ? `/lr/${p[1]}/on` : `/rtn/aux/${p[1]}/on`
+						const strip = p[0] == 'm' ? `/lr/${p[1]}/on` : `/rtn/aux/${p[1]}/on`
 						const arg = {
 							type: 'i',
-							value: setToggle(self.xStat[cmd].isOn, action.options.set),
+							value: setToggle(self.xStat[strip].isOn, action.options.set),
 						}
-						self.sendOSC(cmd, arg)
+						self.sendOSC(strip, arg)
 					},
 				}
 			} else {
@@ -153,13 +336,13 @@ export function buildStripDefs(self) {
 						callback: async (action, context) => {
 							const opt = action.options
 							const nVal = opt.type == '/ch/' ? pad0(opt.num) : opt.num
-							const cmd =
+							const strip =
 								action.actionId == 'lr' ? opt.type + nVal + '/mix/lr' : opt.type + nVal + '/' + action.actionId + '/on'
 							const arg = {
 								type: 'i',
-								value: setToggle(self.xStat[cmd].isOn, opt.set),
+								value: setToggle(self.xStat[strip].isOn, opt.set),
 							}
-							self.sendOSC(cmd, arg)
+							self.sendOSC(strip, arg)
 						},
 					}
 				}
@@ -168,6 +351,7 @@ export function buildStripDefs(self) {
 			// console.log(`${chID}/${defProc[p].node} "${theStrip.description} ${defProc[p].desc}"`);
 		}
 
+		// channel mutes
 		if (muteID in muteActions) {
 			muteActions[muteID].options[0].choices.push({
 				id: chID + '/',
@@ -208,17 +392,17 @@ export function buildStripDefs(self) {
 						callback: async (action, context) => {
 							let opt = action.options
 							const nVal = opt.type == '/ch/' ? pad0(opt.num) : opt.num
-							let cmd = opt.type + nVal
+							let strip = opt.type + nVal
 							if (opt.type == '/dca/') {
-								cmd += '/on'
+								strip += '/on'
 							} else {
-								cmd += '/mix/on'
+								strip += '/mix/on'
 							}
 							const arg = {
 								type: 'i',
-								value: setToggle(self.xStat[cmd].isOn, opt.mute),
+								value: setToggle(self.xStat[strip].isOn, opt.mute),
 							}
-							self.sendOSC(cmd, arg)
+							self.sendOSC(strip, arg)
 						},
 					}
 				} else {
@@ -227,12 +411,12 @@ export function buildStripDefs(self) {
 						name: 'Mute ' + theStrip.description,
 						options: [],
 						callback: async (action, context) => {
-							const cmd = action.actionId == 'mMute' ? '/lr/mix/on' : '/rtn/aux/mix/on'
+							const strip = action.actionId == 'mMute' ? '/lr/mix/on' : '/rtn/aux/mix/on'
 							const arg = {
 								type: 'i',
-								value: setToggle(self.xStat[cmd].isOn, action.options.mute),
+								value: setToggle(self.xStat[strip].isOn, action.options.mute),
 							}
-							self.sendOSC(cmd, arg)
+							self.sendOSC(strip, arg)
 						},
 					}
 				}
@@ -254,12 +438,12 @@ export function buildStripDefs(self) {
 					],
 					callback: async (action, context) => {
 						const opt = action.options
-						const cmd = '/config/mute/' + opt.mute_grp
+						const strip = '/config/mute/' + opt.mute_grp
 						const arg = {
 							type: 'i',
-							value: setToggle(self.xStat[cmd].isOn, opt.mute),
+							value: setToggle(self.xStat[strip].isOn, opt.mute),
 						}
-						self.sendOSC(cmd, arg)
+						self.sendOSC(strip, arg)
 					},
 				}
 			}
@@ -277,608 +461,13 @@ export function buildStripDefs(self) {
 			})
 		}
 
-		// add new channel type to dropdown choices
-		if (fadeActions[fadeID] !== undefined) {
-			let l = ''
-			fadeActions[fadeID].options[0].choices.push({
-				id: chID + '/',
-				label: theStrip.description + ' ' + theStrip.min + '-' + theStrip.max,
-			})
-			l = fadeActions[fadeID].options[1].label + ', ' + theStrip.description
-			fadeActions[fadeID].options[1].label = l
-
-			fadeActions[fadeID + '_a'].options[0].choices.push({
-				id: chID + '/',
-				label: theStrip.description + ' ' + theStrip.min + '-' + theStrip.max,
-			})
-			l = fadeActions[fadeID + '_a'].options[1].label + ', ' + theStrip.description
-			fadeActions[fadeID + '_a'].options[1].label = l
-
-			storeActions[fadeID + '_s'].options[0].choices.push({
-				id: chID + '/',
-				label: theStrip.description + ' ' + theStrip.min + '-' + theStrip.max,
-			})
-			l = storeActions[fadeID + '_s'].options[1].label + ', ' + theStrip.description
-			storeActions[fadeID + '_s'].options[1].label = l
-
-			storeActions[fadeID + '_r'].options[0].choices.push({
-				id: chID + '/',
-				label: theStrip.description + ' ' + theStrip.min + '-' + theStrip.max,
-			})
-			l = storeActions[fadeID + '_r'].options[1].label + ', ' + theStrip.description
-			storeActions[fadeID + '_r'].options[1].label = l
-		} else {
-			// new strip
-			if (theStrip.hasOn == true) {
-				if (d > 0) {
-					// one of the channel strips
-					fadeActions[fadeID] = {
-						name: 'Fader Set',
-						options: [
-							{
-								type: 'dropdown',
-								label: 'Type',
-								id: 'type',
-								choices: [
-									{
-										id: chID + '/',
-										label: theStrip.description + ' ' + theStrip.min + '-' + theStrip.max,
-									},
-								],
-								default: chID + '/',
-							},
-							{
-								type: 'number',
-								label: theStrip.description,
-								id: 'num',
-								default: 1,
-								min: theStrip.min,
-								max: theStrip.max,
-								range: false,
-								required: true,
-							},
-						],
-						callback: async (action, context) => {
-							const opt = action.options
-							let nVal = opt.num
-							if (opt.type == '/ch/') {
-								nVal = pad0(nVal)
-							}
-							const cmd = opt.type + nVal + (opt.type == '/dca/' ? '/fader' : '/mix/fader')
-							let fVal = fadeTo(action.actionId, cmd, opt, self)
-							const arg = {
-								type: 'f',
-								value: fVal,
-							}
-							self.sendOSC(cmd, arg)
-						},
-					}
-
-					fadeActions[fadeID + '_a'] = {
-						name: 'Fader Adjust',
-						options: [
-							{
-								type: 'dropdown',
-								label: 'Type',
-								id: 'type',
-								choices: [
-									{
-										id: chID + '/',
-										label: theStrip.description + ' ' + theStrip.min + '-' + theStrip.max,
-									},
-								],
-								default: chID + '/',
-							},
-							{
-								type: 'number',
-								label: theStrip.description,
-								id: 'num',
-								default: 1,
-								min: theStrip.min,
-								max: theStrip.max,
-								range: false,
-								required: true,
-							},
-						],
-						callback: async (action, context) => {
-							const opt = action.options
-							let nVal = (opt.type == '/ch/' ? pad0(opt.num) : opt.num)
-							let cmd = opt.type + nVal
-							cmd += opt.type == '/dca/' ? '/fader' : '/mix/fader'
-							let fVal = fadeTo(action.actionId, cmd, opt, self)
-							const arg = {
-								type: 'f',
-								value: fVal,
-							}
-							self.sendOSC(cmd, arg)
-						},
-					}
-
-					storeActions[fadeID + '_s'] = {
-						name: 'Store Fader',
-						options: [
-							{
-								type: 'dropdown',
-								label: 'Type',
-								id: 'type',
-								choices: [
-									{
-										id: chID + '/',
-										label: theStrip.description + ' ' + theStrip.min + '-' + theStrip.max,
-									},
-								],
-								default: chID + '/',
-							},
-							{
-								type: 'number',
-								label: theStrip.description,
-								id: 'num',
-								default: 1,
-								min: theStrip.min,
-								max: theStrip.max,
-								range: false,
-								required: true,
-							},
-						],
-						callback: async (action, context) => {
-							const opt = action.options
-							let nVal = opt.num
-							if (opt.type == '/ch/') {
-								nVal = pad0(nVal)
-							}
-							let strip = opt.type + nVal
-							strip += opt.type == '/dca/' ? '/fader' : '/mix/fader'
-							fadeTo(action.actionId, strip, opt, self)
-						},
-					}
-
-					storeActions[fadeID + '_r'] = {
-						name: 'Recall Fader',
-						options: [
-							{
-								type: 'dropdown',
-								label: 'Type',
-								id: 'type',
-								choices: [
-									{
-										id: chID + '/',
-										label: theStrip.description + ' ' + theStrip.min + '-' + theStrip.max,
-									},
-								],
-								default: chID + '/',
-							},
-							{
-								type: 'number',
-								label: theStrip.description,
-								id: 'num',
-								default: 1,
-								min: theStrip.min,
-								max: theStrip.max,
-								range: false,
-								required: true,
-							},
-						],
-						callback: async (action, context) => {
-							const opt = action.options
-							let nVal = opt.num
-							if (opt.type == '/ch/') {
-								nVal = pad0(nVal)
-							}
-							let strip = opt.type + nVal
-							strip += opt.type == '/dca/' ? '/fader' : '/mix/fader'
-							let fVal = fadeTo(action.actionId, strip, opt, self)
-							const arg = {
-								type: 'f',
-								value: fVal,
-							}
-							self.sendOSC(strip, arg)
-						},
-					}
-				} else {
-					// Main LR, Aux/USB
-					const strip = fadeID == 'mFad' ? '/lr/mix/fader' : '/rtn/aux/mix/fader'
-					fadeActions[fadeID] = {
-						name: theStrip.description + ' Fader Set',
-						options: [],
-						callback: async (action, context) => {
-							const opt = action.options
-							const fVal = fadeTo(action.actionId, strip, opt, self)
-							self.sendOSC(strip, { type: 'f', value: fVal })
-						},
-					}
-					fadeActions[fadeID + '_a'] = {
-						name: theStrip.description + ' Fader Adjust',
-						options: [],
-						callback: async (action, context) => {
-							const opt = action.options
-							const fVal = fadeTo(action.actionId, strip, opt, self)
-							self.sendOSC(strip, { type: 'f', value: fVal })
-						},
-					}
-					storeActions[fadeID + '_s'] = {
-						name: 'Store ' + theStrip.description + ' Fader',
-						options: [],
-						callback: async (action, context) => {
-							const opt = action.options
-							fadeTo(action.actionId, strip, opt, self)
-							// internal only, fadeTo handles the 'store'
-						},
-					}
-					storeActions[fadeID + '_r'] = {
-						name: 'Recall ' + theStrip.description + ' Fader',
-						options: [],
-						callback: async (action, context) => {
-							const opt = action.options
-							const fVal = fadeTo(action.actionId, strip, opt, self)
-							self.sendOSC(strip, { type: 'f', value: fVal })
-						},
-					}
-				} // else mute group (no fader)
-			}
-
-			if (theStrip.hasOn) {
-				fadeActions[fadeID].options.push({
-					type: 'dropdown',
-					label: 'Fader Level',
-					id: 'fad',
-					default: '0.0',
-					choices: self.FADER_VALUES,
-				})
-
-				fadeActions[fadeID + '_a'].options.push({
-					type: 'number',
-					tooltip: 'Move fader +/- percent.',
-					label: 'Adjust By',
-					id: 'ticks',
-					min: -100,
-					max: 100,
-					default: 1,
-				})
-
-				for (var sfx of ['', '_a']) {
-					fadeActions[fadeID + sfx].options.push({
-						type: 'number',
-						label: 'Fade Duration (ms)',
-						id: 'duration',
-						default: 0,
-						min: 0,
-						step: 10,
-						max: 60000,
-					})
-				}
-
-				storeActions[fadeID + '_s'].options.push({
-					type: 'dropdown',
-					tooltip: 'Store fader value for later recall',
-					label: 'Where',
-					id: 'store',
-					default: 'me',
-					choices: [
-						{
-							id: 'me',
-							label: 'Channel',
-						},
-						...self.STORE_LOCATION,
-					],
-				})
-
-				storeActions[fadeID + '_r'].options.push({
-					type: 'dropdown',
-					tooltip: 'Recall stored fader value',
-					label: 'From',
-					id: 'store',
-					default: 'me',
-					choices: [
-						{
-							id: 'me',
-							label: 'Channel',
-						},
-						...self.STORE_LOCATION,
-					],
-				})
-
-				storeActions[fadeID + '_r'].options.push({
-					type: 'number',
-					label: 'Fade Duration (ms)',
-					id: 'duration',
-					default: 0,
-					min: 0,
-					step: 10,
-					max: 60000,
-				})
-			}
+		if (!!fadeID) {
+			makeLevelActions(fadeID, theStrip.description, chID + '/', theStrip)
 		}
 
 		// add channel type to send actions
 		if (theStrip.hasLevel) {
-			let sendID = 'send'
-			let l = ''
-			if (sendActions[sendID] !== undefined) {
-				sendActions[sendID].options[0].choices.push({
-					id: chID + '/',
-					label: sendLabel(theStrip.description, theStrip.min, theStrip.max),
-				})
-				l = sendActions[sendID].options[1].label + ', ' + theStrip.description
-				sendActions[sendID].options[1].label = l
-
-				sendActions[sendID + '_a'].options[0].choices.push({
-					id: chID + '/',
-					label: sendLabel(theStrip.description, theStrip.min, theStrip.max),
-				})
-				l = sendActions[sendID + '_a'].options[1].label + ', ' + theStrip.description
-				sendActions[sendID + '_a'].options[1].label = l
-
-				storeActions[sendID + '_s'].options[0].choices.push({
-					id: chID + '/',
-					label: sendLabel(theStrip.description, theStrip.min, theStrip.max),
-				})
-				l = storeActions[sendID + '_s'].options[1].label + ', ' + theStrip.description
-				storeActions[sendID + '_s'].options[1].label = l
-
-				storeActions[sendID + '_r'].options[0].choices.push({
-					id: chID + '/',
-					label: sendLabel(theStrip.description, theStrip.min, theStrip.max),
-				})
-				l = storeActions[sendID + '_r'].options[1].label + ', ' + theStrip.description
-				storeActions[sendID + '_r'].options[1].label = l
-			} else {
-				// new channel
-				sendActions[sendID] = {
-					name: 'Send Level Set',
-					options: [
-						{
-							type: 'dropdown',
-							label: 'Type',
-							id: 'type',
-							choices: [
-								{
-									id: chID + '/',
-									label: sendLabel(theStrip.description, theStrip.min, theStrip.max),
-								},
-							],
-							default: chID + '/',
-						},
-						{
-							type: 'number',
-							label: theStrip.description,
-							id: 'chNum',
-							default: 1,
-							min: theStrip.min,
-							max: theStrip.max,
-							range: false,
-							required: true,
-						},
-						{
-							type: 'dropdown',
-							label: 'Bus',
-							id: 'busNum',
-							choices: busOpts,
-							default: 1,
-						},
-						{
-							type: 'dropdown',
-							label: 'Fader Level',
-							id: 'fad',
-							default: '0.0',
-							choices: self.FADER_VALUES,
-						},
-					],
-					callback: async (action, context) => {
-						const opt = action.options
-						let nVal = ''
-						if (opt.type == '/ch/') {
-							nVal = pad0(opt.chNum) + '/'
-						} else if (opt.type == '/rtn/') {
-							nVal = parseInt(opt.chNum) + '/'
-						}
-						const bVal = pad0(opt.busNum)
-						const strip = opt.type + nVal + 'mix/' + bVal + '/level'
-						fadeTo(action.actionId, strip, opt, self)
-					},
-				}
-
-				sendActions[sendID + '_a'] = {
-					name: 'Send Level Adjust',
-					options: [
-						{
-							type: 'dropdown',
-							label: 'Type',
-							id: 'type',
-							choices: [
-								{
-									id: chID + '/',
-									label: sendLabel(theStrip.description, theStrip.min, theStrip.max),
-								},
-							],
-							default: chID + '/',
-						},
-						{
-							type: 'number',
-							label: theStrip.description,
-							id: 'chNum',
-							default: 1,
-							min: theStrip.min,
-							max: theStrip.max,
-							range: false,
-							required: true,
-						},
-						{
-							type: 'dropdown',
-							label: 'Bus',
-							id: 'busNum',
-							choices: busOpts,
-							default: 1,
-						},
-						{
-							type: 'number',
-							title: 'Move fader +/- percent.',
-							label: 'Adjust by',
-							id: 'ticks',
-							min: -100,
-							max: 100,
-							default: 1,
-						},
-					],
-					callback: async (action, context) => {
-						const opt = action.options
-						let nVal = ''
-						if (opt.type == '/ch/') {
-							nVal = pad0(opt.chNum) + '/'
-						} else if (opt.type == '/rtn/') {
-							nVal = parseInt(opt.chNum) + '/'
-						}
-						const bVal = pad0(opt.busNum)
-						let strip = opt.type + nVal + 'mix/' + bVal + '/level'
-						let fVal = fadeTo(action.actionId, strip, opt, self)
-						self.sendOSC(strip, { type: 'f', value: fVal })
-					},
-				}
-
-				for (var sfx of ['', '_a']) {
-					sendActions[sendID + sfx].options.push({
-						type: 'number',
-						label: 'Fade Duration (ms)',
-						id: 'duration',
-						default: 0,
-						min: 0,
-						step: 10,
-						max: 60000,
-					})
-				}
-
-				storeActions[sendID + '_s'] = {
-					name: 'Store Send Level',
-					options: [
-						{
-							type: 'dropdown',
-							label: 'Type',
-							id: 'type',
-							choices: [
-								{
-									id: chID + '/',
-									label: sendLabel(theStrip.description, theStrip.min, theStrip.max),
-								},
-							],
-							default: chID + '/',
-						},
-						{
-							type: 'number',
-							label: theStrip.description,
-							id: 'chNum',
-							default: 1,
-							min: theStrip.min,
-							max: theStrip.max,
-							range: false,
-							required: true,
-						},
-						{
-							type: 'dropdown',
-							label: 'Bus',
-							id: 'busNum',
-							choices: busOpts,
-							default: 1,
-						},
-						{
-							type: 'dropdown',
-							tooltip: 'Store send value for later recall',
-							label: 'Where',
-							id: 'store',
-							default: 'me',
-							choices: [
-								{
-									id: 'me',
-									label: 'Channel Send',
-								},
-								...self.STORE_LOCATION,
-							],
-						},
-					],
-					callback: async (action, context) => {
-						const opt = action.options
-						let nVal = ''
-						if (opt.type == '/ch/') {
-							nVal = pad0(opt.chNum) + '/'
-						} else if (opt.type == '/rtn/') {
-							nVal = parseInt(opt.chNum) + '/'
-						}
-						const bVal = pad0(opt.busNum)
-						const strip = opt.type + nVal + 'mix/' + bVal + '/level'
-						fadeTo(action.actionId, strip, opt, self)
-					},
-				}
-
-				storeActions[sendID + '_r'] = {
-					name: 'Recall Send Level',
-					options: [
-						{
-							type: 'dropdown',
-							label: 'Type',
-							id: 'type',
-							choices: [
-								{
-									id: chID + '/',
-									label: sendLabel(theStrip.description, theStrip.min, theStrip.max),
-								},
-							],
-							default: chID + '/',
-						},
-						{
-							type: 'number',
-							label: theStrip.description,
-							id: 'chNum',
-							default: 1,
-							min: theStrip.min,
-							max: theStrip.max,
-							range: false,
-							required: true,
-						},
-						{
-							type: 'dropdown',
-							label: 'Bus',
-							id: 'busNum',
-							choices: busOpts,
-							default: 1,
-						},
-						{
-							type: 'dropdown',
-							tooltip: 'Recall stored send value',
-							label: 'From',
-							id: 'store',
-							default: 'me',
-							choices: [
-								{
-									id: 'me',
-									label: 'Channel Send',
-								},
-								...self.STORE_LOCATION,
-							],
-						},
-					],
-					callback: async (action, context) => {
-						const opt = action.options
-						let nVal = ''
-						if (opt.type == '/ch/') {
-							nVal = pad0(opt.chNum) + '/'
-						} else if (opt.type == '/rtn/') {
-							nVal = parseInt(opt.chNum) + '/'
-						}
-						const bVal = pad0(opt.busNum)
-						const strip = opt.type + nVal + 'mix/' + bVal + '/level'
-						let fVal = fadeTo(action.actionId, strip, opt, self)
-						self.sendOSC(strip, { type: 'f', value: fVal })
-					},
-				}
-
-				storeActions[sendID + '_r'].options.push({
-					type: 'number',
-					label: 'Fade Duration (ms)',
-					id: 'duration',
-					default: 0,
-					min: 0,
-					step: 10,
-					max: 60000,
-				})
-			}
+			makeLevelActions('send', 'Send', chID + '/', theStrip)
 		}
 
 		if (d == 0) {
@@ -958,7 +547,7 @@ export function buildStripDefs(self) {
 					let bOrF = b < 7 ? 'b' : 'f'
 					let sChan = b < 7 ? b : b - 6
 					theID = chID + '/mix/' + pad0(b) + '/level'
-					let sendID = b < 7 ? ' Bus ' + b : ' FX ' + (b - 6)
+					let whichSend = b < 7 ? ' Bus ' + b : ' FX ' + (b - 6)
 					fID = 's_' + unSlash(fbID) + '_' + bOrF + sChan
 					fbToStat[fID] = theID
 					stat[theID] = {
@@ -970,15 +559,15 @@ export function buildStripDefs(self) {
 						polled: 0,
 					}
 					defVariables.push({
-						name: theStrip.description + ' ' + sendID + ' dB',
+						name: theStrip.description + ' ' + whichSend + ' dB',
 						variableId: fID + '_d',
 					})
 					defVariables.push({
-						name: theStrip.description + ' ' + sendID + ' %',
+						name: theStrip.description + ' ' + whichSend + ' %',
 						variableId: fID + '_p',
 					})
 					defVariables.push({
-						name: theStrip.description + ' ' + sendID + ' % Relative Loudness',
+						name: theStrip.description + ' ' + whichSend + ' % Relative Loudness',
 						variableId: fID + '_rp',
 					})
 				}
@@ -987,7 +576,6 @@ export function buildStripDefs(self) {
 			for (let c = theStrip.min; c <= theStrip.max; c++) {
 				let theID = chID + '/' + pad0(c, d) + muteSfx
 				let fID = fbID + '_' + c
-				let fpID = `${unSlash(fbID)}_${p}`
 				fbToStat[fID] = theID
 				stat[theID] = {
 					isOn: false,
@@ -999,7 +587,7 @@ export function buildStripDefs(self) {
 				// 'proc' routing toggles
 				for (const p of theStrip.proc) {
 					theID = `${chID}/${pad0(c, d)}/${defProc[p].node}`
-					fpID = `${unSlash(fbID)}_${p}`
+					let fpID = `${unSlash(fbID)}_${p}`
 					fID = `${fpID}${c}`
 					fbToStat[fID] = theID
 					stat[theID] = {
@@ -1039,7 +627,7 @@ export function buildStripDefs(self) {
 							let bOrF = b < 7 ? 'b' : 'f'
 							let sChan = b < 7 ? b : b - 6
 							theID = chID + '/' + pad0(c, d) + '/mix/' + pad0(b) + '/level'
-							let sendID = b < 7 ? ' Bus ' + b : ' FX ' + (b - 6)
+							let whichSend = b < 7 ? ' Bus ' + b : ' FX ' + (b - 6)
 							fID = 's_' + unSlash(fbID) + c + '_' + bOrF + sChan
 							fbToStat[fID] = theID
 							stat[theID] = {
@@ -1051,15 +639,15 @@ export function buildStripDefs(self) {
 								polled: 0,
 							}
 							defVariables.push({
-								name: capFirst(fbID) + ' ' + c + sendID + ' dB',
+								name: capFirst(fbID) + ' ' + c + whichSend + ' dB',
 								variableId: fID + '_d',
 							})
 							defVariables.push({
-								name: capFirst(fbID) + ' ' + c + sendID + ' %',
+								name: capFirst(fbID) + ' ' + c + whichSend + ' %',
 								variableId: fID + '_p',
 							})
 							defVariables.push({
-								name: capFirst(fbID) + ' ' + c + sendID + ' % Relative Loudness',
+								name: capFirst(fbID) + ' ' + c + whichSend + ' % Relative Loudness',
 								variableId: fID + '_rp',
 							})
 						}
@@ -1141,8 +729,8 @@ export function buildStripDefs(self) {
 				required: true,
 			})
 		}
-		// 'proc' routing toggles
-		for (var p of theStrip.proc) {
+		// 'proc' routing feedback toggles
+		for (let p of theStrip.proc) {
 			fbDescription = `${theStrip.description} ${defProc[p].desc} status`
 			let fID = `${fbID}_${p}`
 			muteFeedbacks[fID] = {
@@ -1196,7 +784,7 @@ export function buildStripDefs(self) {
 		// channel color feedbacks
 		if (theStrip.hasOn) {
 			fbDescription = theStrip.description + ' label'
-			var cID = 'c_' + unSlash(fbID)
+			let cID = 'c_' + unSlash(fbID)
 			colorFeedbacks[cID] = {
 				type: 'advanced',
 				name: 'Color of ' + fbDescription,
@@ -1231,8 +819,8 @@ export function buildStripDefs(self) {
 	// apply channel strip configurations
 	Object.assign(self.xStat, stat)
 	Object.assign(self.fbToStat, fbToStat)
-	Object.assign(self.actionDefs, fadeActions)
-	Object.assign(self.actionDefs, sendActions, muteActions, procActions, storeActions)
+	//Object.assign(self.actionDefs, fadeActions)
+	Object.assign(self.actionDefs, levelActions, muteActions, procActions) //, storeActions)
 	Object.assign(self.muteFeedbacks, muteFeedbacks)
 	Object.assign(self.colorFeedbacks, colorFeedbacks)
 	self.variableDefs.push(...defVariables)

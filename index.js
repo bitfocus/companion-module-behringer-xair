@@ -21,6 +21,7 @@ class BAirInstance extends InstanceBase {
 
 		this.soloOffset = {}
 		this.actionDefs = {}
+		this.haActionDefs = {}
 		this.muteFeedbacks = {}
 		this.colorFeedbacks = {}
 		this.variableDefs = []
@@ -79,6 +80,7 @@ class BAirInstance extends InstanceBase {
 		buildSoloDefs(this)
 		buildStaticActions(this)
 		buildSnapshotDefs(this)
+		//buildHeadampDefs(this)
 		this.setActionDefinitions(this.actionDefs)
 		this.buildStaticFeedbacks(this)
 		this.buildStaticVariables()

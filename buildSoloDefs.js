@@ -1,5 +1,5 @@
 import { combineRgb, InstanceStatus } from '@companion-module/base'
-import { pad0, unSlash, setToggle } from './helpers.js'
+import { pad0, unSlash, setToggle, fadeTo } from './helpers.js'
 import { ICON_SOLO } from './icons.js'
 import { defSolo } from './defSolo.js'
 
@@ -80,12 +80,12 @@ export function buildSoloDefs(self) {
 					soloActions[soloID].callback = async (action, context) => {
 						const opt = action.options
 						let nVal = opt.num ? opt.num : 1
-						let cmd = '/-stat/solosw/' + pad0(self.soloOffset[action.actionId] + nVal)
+						let strip = '/-stat/solosw/' + pad0(self.soloOffset[action.actionId] + nVal)
 						let arg = {
 							type: 'i',
-							value: setToggle(self.xStat[cmd].isOn, opt.solo),
+							value: setToggle(self.xStat[strip].isOn, opt.solo),
 						}
-						await self.sendOSC(cmd, arg)
+						await self.sendOSC(strip, arg)
 					}
 					// solo feedback defs
 					const fbDescription = 'Solo ' + ch.description + ' status'
@@ -152,56 +152,54 @@ export function buildSoloDefs(self) {
 					soloFbToStat[actID] = c
 					if (ch.isFader) {
 						let fbDescription = 'Solo ' + ch.description
-						soloActions[actID] = {
-							name: fbDescription + ' Set',
-							options: [
-								{
-									type: 'dropdown',
-									label: 'Fader Level',
-									id: 'fad',
-									default: '0.0',
-									choices: self.FADER_VALUES,
-								},
-							],
-							callback: async (action, context) => {
+						for (let sfx in ['', '_a']) {
+							const aId = actID + sfx
+							soloActions[aId] = {
+								name: fbDescription + ('' == sfx ? ' Set' : ' Adjust'),
+								options: [],
+							}
+							switch (sfx) {
+								case '':
+									soloActions[aId].options.push({
+										type: 'dropdown',
+										label: 'Level',
+										id: 'fad',
+										default: '0.0',
+										choices: self.FADER_VALUES,
+									})
+									break
+								case '_a':
+									soloActions[aId].options.push({
+										type: 'number',
+										tooltip: 'Move fader +/- percent.\nFader Percent:\n0 = -oo, 75 = 0db, 100 = +10db',
+										label: 'Adjust',
+										id: 'ticks',
+										min: -100,
+										max: 100,
+										default: 1,
+									})
+							}
+							soloActions[aId].options.push({
+								type: 'checkbox',
+								tooltip: 'This prevents the fader level from going above 0db (75%)',
+								label: 'Limit fader to 0.0dB',
+								id: 'faderLim',
+								default: 0,
+							})
+							soloActions[aId].callback = async (action, context) => {
 								const opt = action.options
-								let cmd = '/config/solo/level'
-								let fVal = fadeTo(action.actionId, cmd, opt, self)
+								let strip = '/config/solo/level'
+								let fVal = fadeTo(action.actionId, strip, opt, self)
 								if (fVal >= 0) {
 									let arg = {
 										type: 'f',
 										value: fVal,
 									}
-									await self.sendOSC(cmd, arg)
+									await self.sendOSC(strip, arg)
 								}
-							},
+							}
 						}
-						soloActions[actID + '_a'] = {
-							name: fbDescription + ' Adjust',
-							options: [
-								{
-									type: 'number',
-									tooltip: 'Move fader +/- percent.\nFader Percent:\n0 = -oo, 75 = 0db, 100 = +10db',
-									label: 'Adjust',
-									id: 'ticks',
-									min: -100,
-									max: 100,
-									default: 1,
-								},
-							],
-							callback: async (action, context) => {
-								const opt = action.options
-								let cmd = '/config/solo/level'
-								let fVal = fadeTo(action.actionId, cmd, opt, self)
-								if (fVal >= 0) {
-									let arg = {
-										type: 'f',
-										value: fVal,
-									}
-									await self.sendOSC(cmd, arg)
-								}
-							},
-						}
+
 						stat[c].fader = 0
 						stat[c].fSteps = 161
 						soloVariables.push({
@@ -221,9 +219,9 @@ export function buildSoloDefs(self) {
 							name: 'Solo ' + ch.description,
 							options: [],
 							callback: async (action, context) => {
-								let cmd = `${c}`
-								let arg = { type: 'i', value: setToggle(self.xStat[cmd].isOn, action.options.set) }
-								await self.sendOSC(cmd, arg)
+								let strip = `${c}`
+								let arg = { type: 'i', value: setToggle(self.xStat[strip].isOn, action.options.set) }
+								await self.sendOSC(strip, arg)
 							},
 						}
 						soloActions[actID].options.push({
