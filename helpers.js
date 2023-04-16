@@ -20,8 +20,8 @@ export function fadeTo(cmd, strip, opt, self) {
 	const node = strip.split('/').pop()
 	const subAct = cmd.slice(-2)
 
-
 	const opTicks = parseInt(opt.ticks)
+	const faderLim = opt.faderLim
 	const steps = stat.fSteps
 	const span = parseFloat(opt.duration)
 	const oldVal = stat[node]
@@ -33,8 +33,6 @@ export function fadeTo(cmd, strip, opt, self) {
 
 	switch (subAct) {
 		case '_a': // adjust +/- (pseudo %)
-			// byVal = (opTicks * steps) / 100
-			// newIdx = Math.min(steps - 1, Math.max(0, oldIdx + Math.round(byVal)))
 			r = self.fLevels[steps][newIdx]
 			break
 		case '_r': // restore
@@ -51,6 +49,10 @@ export function fadeTo(cmd, strip, opt, self) {
 		default: // set new value
 			r = parseFloat(opt.fad)
 	}
+	// if max fader limit check requested
+	// anything over -0.3db resets to 0db
+	faderLim && r >= 0.74 ? (r = 0.75) : r
+
 	// set up cross fade?
 	if (span > 0 && r >= 0) {
 		const xSteps = span / (1000 / self.fadeResolution)

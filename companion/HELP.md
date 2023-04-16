@@ -43,7 +43,7 @@ Tape Operation | Stop,Play,PlayPause,Record,RecordPause,Fast Forward,Rewind of t
 
 **Note *mute, solo, processing*:** All mute, solo, and processing actions also have a Toggle option that inverts the current state of the board setting.
 
-**Note *fader adjustment*:** This module stores fader position as a range from 0 (-oo dB) to 100 (+10dB). The conversion from position to dB is explained below. Fader changes also have an optional duration of 0 to 60000 mSec (0 to 60 seconds) to create cross fades.
+**Note *fader adjustment*:** This module stores fader position as a range from 0 (-oo dB) to 100 (+10dB). The conversion from position to dB is explained below. Fader changes also have an optional duration of 0 to 60000 mSec (0 to 60 seconds) to create cross fades. There is an option to limit levels to 0db.
 
 **Note *Storage and Recall*:** Each channel or bus send has one save value. Recall will only restore the last value saved. There are also 10 Global slots available to store a value that may be recalled to any channel. Recalling an empty slot will have no effect.
 
@@ -97,7 +97,8 @@ Variable | Description
 **Note *Snapshot numbers*:** Replace {num} with the desired 2-digit snapshot number: $(xair:s_name_04). A snapshot with no name will have a default name of '#{num}': #04 (it is probably empty).
 
 **Note *Relative Loudness*:** This variable shows the percieved loudness with 0dB fader gain as a reference (100%). +/- 10dB changes become x2/x0.5 respectively as per the Loudness Equation (10 x log2). This allows for a more non-savy user friendly readout. *See table bellow.*
-#####Example values :
+
+##### Example values :
 d (dB) | % (_p)| % (_rp)
 -----------------|---------------|---------------
 +10 | 100 | 200
@@ -106,6 +107,7 @@ d (dB) | % (_p)| % (_rp)
 -20 | 38 | 25
 -30 | 25 | 13
 -40 | 19 | 6
+
 
 
 ## Feedback
