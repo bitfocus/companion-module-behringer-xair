@@ -82,7 +82,8 @@ export const UpgradeScripts = [
 		for (let action of props.actions) {
 			let changed = false
 			let aId = action.actionId
-			if (aId.match(/^send/)) { // chNum changed to num to match other actions
+			if (aId.match(/^send/)) {
+				// chNum changed to num to match other actions
 				if (action.options.chNum != undefined) {
 					action.options.num = action.options.chNum
 					delete action.options.chNum
@@ -99,4 +100,7 @@ export const UpgradeScripts = [
 		}
 		return result
 	},
+	CreateConvertToBooleanFeedbackUpgradeScript({
+		'snap_color': true,
+	}),
 ]

@@ -2,8 +2,8 @@ import { combineRgb } from '@companion-module/base'
 import { pad0 } from './helpers.js'
 
 export function buildConstants(self) {
-
 	// discreet float values for faders (1024)
+	self.fLevels[1024] = []
 	for (let i = 0; i < 1024; i++) {
 		self.fLevels[1024][i] = Math.min(
 			1.0,
@@ -11,9 +11,27 @@ export function buildConstants(self) {
 		)
 	}
 
-	// discreet float values for sends (161)
-	for (let i = 0; i < 161; i++) {
-		self.fLevels[161][i] = self.stepsToFader(i, 161)
+	self.levelOpts = [
+		{ op: '', act: 'Set' },
+		{ op: '_a', act: 'Adjust' },
+		{ op: '_s', act: 'Store' },
+		{ op: '_r', act: 'Recall' },
+	]
+
+
+	// pre-set linear values for various other 'levels'
+	const lvls = [
+		161, // sends
+		101, // pan
+		145, // trim, headamp gain
+		65, // aux gain
+	]
+
+	for (let lvl of lvls) {
+		self.fLevels[lvl] = []
+		for (let i = 0; i < lvl; i++) {
+			self.fLevels[lvl][i] = self.stepsToFader(i, lvl)
+		}
 	}
 
 	self.STORE_LOCATION = []

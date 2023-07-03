@@ -26,8 +26,7 @@ class BAirInstance extends InstanceBase {
 		this.colorFeedbacks = {}
 		this.variableDefs = []
 		this.fLevels = {}
-		this.fLevels[1024] = []
-		this.fLevels[161] = []
+		this.REGEX_PERCENT = /^-?([0-9]|[1-9][0-9]|100)$/
 		this.blinkingFB = {}
 		this.crossFades = {}
 		this.unitsFound = {}
@@ -35,12 +34,12 @@ class BAirInstance extends InstanceBase {
 		this.PollCount = 30
 		this.PollTimeout = 25
 
-		let po = 10024
-		// random local port for each instance
-		internal.id.split('').forEach(function (c) {
-			po += c.charCodeAt(0);
-		});
-		this.port_offset = po;
+		// let po = 10024
+		// // random local port for each instance
+		// internal.id.split('').forEach(function (c) {
+		// 	po += c.charCodeAt(0)
+		// })
+		// this.port_offset = po
 
 		buildConstants(this)
 	}
@@ -174,14 +173,18 @@ class BAirInstance extends InstanceBase {
 	 * network scanner interval
 	 */
 	probe() {
-		this.scanPort.send(
-			{
-				address: '/xinfo',
-				args: [],
-			},
-			'255.255.255.255',
-			10024
-		)
+		if (!(this.probeCount % 6)) {
+			// scan every 30 seconds
+			this.scanPort.send(
+				{
+					address: '/xinfo',
+					args: [],
+				},
+				'255.255.255.255',
+				10024
+			)
+		}
+		this.probeCount++
 	}
 
 	/**
@@ -203,6 +206,7 @@ class BAirInstance extends InstanceBase {
 
 		// When the port is read, send an OSC message to, say, SuperCollider
 		uPort.on('ready', function () {
+			self.probeCount = 0
 			self.probe()
 			self.scanner = setInterval(() => {
 				self.probe()
@@ -497,12 +501,12 @@ class BAirInstance extends InstanceBase {
 			this.oscPort.close()
 		}
 		if (!this.config.host) {
-			this.updateStatus(InstanceStatus.ConnectionFailure,'No host IP')
+			this.updateStatus(InstanceStatus.ConnectionFailure, 'No host IP')
 		} else {
-//		if (this.config.host) {
+			//		if (this.config.host) {
 			this.oscPort = new OSC.UDPPort({
 				localAddress: '0.0.0.0',
-				localPort: this.port_offset,
+				localPort: 0,	// random local port
 				remoteAddress: this.config.host,
 				remotePort: 10024,
 				metadata: true,
@@ -584,11 +588,13 @@ class BAirInstance extends InstanceBase {
 					self.myMixer.model = args[2].value
 					self.myMixer.modelNum = parseInt(args[2].value.match(/\d+/)[0])
 					self.myMixer.fw = args[3].value
+					self.myMixer.ip = args[0].value
 					self.setVariableValues({
 						'm_name': self.myMixer.name,
 						'm_model': self.myMixer.model,
 						'm_modelNum': self.myMixer.modelNum,
 						'm_fw': self.myMixer.fw,
+						'm_ip': self.myMixer.ip,
 					})
 				} else if (node.match(/^\/\-snap\/index$/)) {
 					const s = parseInt(args[0].value)
@@ -680,6 +686,10 @@ class BAirInstance extends InstanceBase {
 				variableId: 'm_fw',
 			},
 			{
+				name: 'XAir Mixer IP Address',
+				variableId: 'm_ip',
+			},
+			{
 				name: 'Current Snapshot Name',
 				variableId: 's_name',
 			},
@@ -705,36 +715,32 @@ class BAirInstance extends InstanceBase {
 	buildStaticFeedbacks(self) {
 		const feedbacks = {
 			snap_color: {
-				type: 'advanced',
-				label: 'Color on Current Snapshot',
-				description: 'Set Button colors when this Snapshot is loaded',
+				type: 'boolean',
+				name: 'Is Current Snapshot',
+				description: 'Indicate on button when snapshot is loaded',
 				options: [
 					{
-						type: 'colorpicker',
-						label: 'Foreground color',
-						id: 'fg',
-						default: '16777215',
-					},
-					{
-						type: 'colorpicker',
-						label: 'Background color',
-						id: 'bg',
-						default: combineRgb(0, 128, 0),
-					},
-					{
-						type: 'number',
+						type: 'textinput',
 						label: 'Snapshot to match',
 						id: 'theSnap',
-						default: 1,
-						min: 1,
-						max: 64,
-						range: false,
+						default: '1',
 						required: true,
+						useVariables: true,
 					},
 				],
-				callback: function (feedback, context) {
-					if (feedback.options.theSnap == self.currentSnapshot) {
-						return { color: feedback.options.fg, bgcolor: feedback.options.bg }
+				defaultStyle: {
+					color: combineRgb(255, 255, 255),
+					bgcolor: combineRgb(0, 128, 0),
+				},
+
+				callback: async (feedback, context) => {
+					const snap = parseInt(await context.parseVariablesInString(feedback.options.theSnap))
+					if (snap < 1 || snap > 64) {
+						const err = [feedback.controlId, feedback.feedbackId, 'Invalid Snapshot #'].join(' → ')
+						self.updateStatus(InstanceStatus.BadConfig, err)
+						self.paramError = true
+					} else {
+						return snap == self.currentSnapshot
 					}
 				},
 			},

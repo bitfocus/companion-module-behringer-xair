@@ -4,20 +4,20 @@ export function buildHADefs(self) {
 	let haActions = {}
 	let haVariables = {}
 
-	for (let s = 1; s <= 16; s++) {
+	for (let s = 1; s <= 24; s++) {
 		let c = pad0(s)
-		let theID = `/headamp/${c}/`
-		let fID = 'ha' + c
+		let baseID = `/headamp/${c}/`
+		let baseFID = 'ha' + c
+		let theID = baseID + 'gain'
 		self.fbToStat[fID] = theID
 		self.xStat[theID] = {
-			name: '#' + c,
-			defaultName: '#' + c,
+			name: 'ha' + c + '_gain',
 			valid: false,
 			fbID: fID,
 			polled: 0,
 		}
-		snapVars.push({
-			name: 'Snapshot ' + c + ' Name',
+		haVariables.push({
+			name: 'Head Amp ' + c ,
 			variableId: fID,
 		})
 		self.snapshot[s] = theID

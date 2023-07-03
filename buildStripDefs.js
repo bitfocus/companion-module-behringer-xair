@@ -1,6 +1,6 @@
 'use strict'
 import { defStrip } from './defStrip.js'
-import { combineRgb, Regex } from '@companion-module/base'
+import { combineRgb, InstanceStatus } from '@companion-module/base'
 import { pad0, unSlash, setToggle, fadeTo } from './helpers.js'
 
 // build the channel strip actions/feedbaks/variables
@@ -19,13 +19,6 @@ export function buildStripDefs(self) {
 	let fbToStat = {}
 
 	let busOpts = []
-
-	const levelOpts = [
-		{ op: '', act: 'Set' },
-		{ op: '_a', act: 'Adjust' },
-		{ op: '_s', act: 'Store' },
-		{ op: '_r', act: 'Recall' },
-	]
 
 	const defProc = {
 		insert: {
@@ -66,7 +59,7 @@ export function buildStripDefs(self) {
 	}
 
 	function makeLevelActions(id, aLabel, aId, theStrip) {
-		for (let sfx of levelOpts) {
+		for (let sfx of self.levelOpts) {
 			const newName = aLabel + ` Level ${sfx.act}`
 			const newLabel = 'send' != id ? aLabel : sendLabel(theStrip.description, theStrip.min, theStrip.max)
 			const newId = id + sfx.op
@@ -114,10 +107,17 @@ export function buildStripDefs(self) {
 						const aId = action.actionId
 						const nVal = opt.type == '/ch/' ? pad0(opt.num) : opt.num
 						const strip = opt.type + nVal + (opt.type == '/dca/' ? '/fader' : '/mix/fader')
-						let fVal = fadeTo(aId, strip, opt, self)
-						if ('_s' != aId.slice(-2)) {
-							// store is local, no console command
-							self.sendOSC(strip, { type: 'f', value: fVal })
+						try {
+							let fVal = await fadeTo(aId, strip, opt, self)
+
+							if ('_s' != aId.slice(-2)) {
+								// store is local, no console command
+								self.sendOSC(strip, { type: 'f', value: fVal })
+							}
+						} catch (error) {
+							const err = [action.controlId, error.message].join(' → ')
+							self.updateStatus(InstanceStatus.BadConfig, err)
+							self.paramError = true
 						}
 					}
 				} else {
@@ -126,10 +126,19 @@ export function buildStripDefs(self) {
 					levelActions[newId].callback = async (action, context) => {
 						const opt = action.options
 						const aId = action.actionId
-						const fVal = fadeTo(aId, strip, opt, self)
-						if ('_s' != aId.slice(-2)) {
-							// store is local, no console command
-							self.sendOSC(strip, { type: 'f', value: fVal })
+						try {
+							let fVal = await fadeTo(aId, strip, opt, self)
+							self.updateStatus(InstanceStatus.Ok)
+							self.paramError = false
+
+							if ('_s' != aId.slice(-2)) {
+								// store is local, no console command
+								self.sendOSC(strip, { type: 'f', value: fVal })
+							}
+						} catch (error) {
+							const err = [action.controlId, error.message].join(' → ')
+							self.updateStatus(InstanceStatus.BadConfig, err)
+							self.paramError = true
 						}
 					}
 				}
@@ -153,10 +162,17 @@ export function buildStripDefs(self) {
 						}
 						const bVal = pad0(opt.busNum)
 						const strip = opt.type + nVal + 'mix/' + bVal + '/level'
-						const fVal = fadeTo(aId, strip, opt, self)
-						if ('_s' != aId.slice(-2)) {
-							// store is local, no console command
-							self.sendOSC(strip, { type: 'f', value: fVal })
+						try {
+							let fVal = await fadeTo(aId, strip, opt, self)
+
+							if ('_s' != aId.slice(-2)) {
+								// store is local, no console command
+								self.sendOSC(strip, { type: 'f', value: fVal })
+							}
+						} catch (error) {
+							const err = [action.controlId, error.message].join(' → ')
+							self.updateStatus(InstanceStatus.BadConfig, err)
+							self.paramError = true
 						}
 					}
 				}
@@ -173,13 +189,12 @@ export function buildStripDefs(self) {
 							break
 						case '_a':
 							levelActions[newId].options.push({
-								type: 'number',
+								type: 'textinput',
+								useVariables: true,
 								tooltip: 'Move fader +/- percent.',
 								label: 'Adjust By',
 								id: 'ticks',
-								min: -100,
-								max: 100,
-								default: 1,
+								default: '1',
 							})
 							break
 						case '_s':
@@ -217,24 +232,26 @@ export function buildStripDefs(self) {
 
 					if (sfx.op != '_s') {
 						// all but store have a fade time
-						levelActions[newId].options.push(...[
-							{
-								type: 'number',
-								label: 'Fade Duration (ms)',
-								id: 'duration',
-								default: 0,
-								min: 0,
-								step: 10,
-								max: 60000,
-							},
-							{
-								type: 'checkbox',
-								tooltip: 'This prevents the fader level from going above 0db (75%)',
-								label: 'Limit fader to 0.0dB',
-								id: 'faderLim',
-								default: 0,
-							},
-						])
+						levelActions[newId].options.push(
+							...[
+								{
+									type: 'number',
+									label: 'Fade Duration (ms)',
+									id: 'duration',
+									default: 0,
+									min: 0,
+									step: 10,
+									max: 60000,
+								},
+								{
+									type: 'checkbox',
+									tooltip: 'This prevents the fader level from going above 0db (75%)',
+									label: 'Limit fader to 0.0dB',
+									id: 'faderLim',
+									default: 0,
+								},
+							]
+						)
 					}
 				}
 			}
