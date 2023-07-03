@@ -1,10 +1,8 @@
-import { Regex } from '@companion-module/base'
+import { Regex, InstanceStatus } from '@companion-module/base'
 import { pad0 } from './helpers.js'
 
 export function buildStaticActions(self) {
-	const sendOSCCmd = async(cmd, arg) => (
-		await self.sendOSC(cmd, arg)
-	)
+	const sendOSCCmd = async (cmd, arg) => await self.sendOSC(cmd, arg)
 
 	let actions = {
 		label: {
@@ -158,15 +156,21 @@ export function buildStaticActions(self) {
 					type: 'textinput',
 					label: 'Snapshot Number 1-64',
 					id: 'snap',
-					default: 1,
-					min: 1,
-					max: 64,
-					regex: Regex.NUMBER,
+					default: '1',
+					useVariables: true,
 				},
 			],
 			callback: async (action, context) => {
-				const opt = action.options
-				await sendOSCCmd('/-snap/load', { type: 'i', value: parseInt(opt.snap) })
+				const snap = parseInt(await context.parseVariablesInString(action.options.snap))
+				if (snap < 1 || snap > 64) {
+					const err = [action.controlId, action.actionId, 'Invalid Snapshot #'].join(' → ')
+					self.updateStatus(InstanceStatus.BadConfig, err)
+					self.paramError = true
+				} else {
+					self.updateStatus(InstanceStatus.Ok)
+					self.paramError = false
+					await sendOSCCmd('/-snap/load', { type: 'i', value: snap })
+				}
 			},
 		},
 
@@ -183,7 +187,7 @@ export function buildStaticActions(self) {
 			name: 'Load Prior Console Snapshot',
 			options: [],
 			callback: async (action, context) => {
-				const snap = Math.max(--self.currentSnapshot,1)
+				const snap = Math.max(--self.currentSnapshot, 1)
 				await sendOSCCmd('/-snap/load', { type: 'i', value: snap })
 			},
 		},
@@ -192,8 +196,8 @@ export function buildStaticActions(self) {
 			name: 'Save Current Console Snapshot',
 			options: [],
 			callback: async (action, context) => {
-				const snap = Math.min(--self.currentSnapshot,1)
-				await sendOSCCmd('/-snap/save', { type: 'i', value: snap } )
+				const snap = Math.min(--self.currentSnapshot, 1)
+				await sendOSCCmd('/-snap/save', { type: 'i', value: snap })
 			},
 		},
 
@@ -211,7 +215,6 @@ export function buildStaticActions(self) {
 				const opt = action.options
 				await sendOSCCmd('/-stat/tape/state', { type: 'i', value: parseInt(opt.tFunc) })
 			},
-
 		},
 	}
 	Object.assign(self.actionDefs, actions)

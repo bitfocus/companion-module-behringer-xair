@@ -1,7 +1,7 @@
 // helper functions
-export function pad0(num, len) {
-	len = len || 2
-	return ('00' + num).slice(-len)
+export function pad0(num, len = 2) {
+	const zeros = '0'.repeat(len)
+	return (zeros + num).slice(-len)
 }
 
 export function unSlash(s) {
@@ -15,13 +15,20 @@ export function setToggle(isOn, opt) {
 // calculate new fader/level float
 // returns a 'new' float value
 // or undefined for a store
-export function fadeTo(cmd, strip, opt, self) {
+export async function fadeTo(cmd, strip, opt, self) {
 	const stat = self.xStat[strip]
 	const node = strip.split('/').pop()
 	const subAct = cmd.slice(-2)
+	let opTicks = 1
 
-
-	const opTicks = parseInt(opt.ticks)
+	if (subAct == '_a') {
+		opTicks = String(await self.parseVariablesInString(`${opt.ticks}`)).trim()
+		if (opTicks && self.REGEX_PERCENT && !self.REGEX_PERCENT.test(opTicks)) {
+			throw new Error('Invalid Adjust Percentage')
+		}
+		opTicks = parseInt(opTicks)
+	}
+	const faderLim = opt.faderLim
 	const steps = stat.fSteps
 	const span = parseFloat(opt.duration)
 	const oldVal = stat[node]
@@ -33,8 +40,6 @@ export function fadeTo(cmd, strip, opt, self) {
 
 	switch (subAct) {
 		case '_a': // adjust +/- (pseudo %)
-			// byVal = (opTicks * steps) / 100
-			// newIdx = Math.min(steps - 1, Math.max(0, oldIdx + Math.round(byVal)))
 			r = self.fLevels[steps][newIdx]
 			break
 		case '_r': // restore
@@ -51,6 +56,10 @@ export function fadeTo(cmd, strip, opt, self) {
 		default: // set new value
 			r = parseFloat(opt.fad)
 	}
+	// if max fader limit check requested
+	// anything over -0.3db resets to 0db
+	faderLim && r >= 0.74 ? (r = 0.75) : r
+
 	// set up cross fade?
 	if (span > 0 && r >= 0) {
 		const xSteps = span / (1000 / self.fadeResolution)

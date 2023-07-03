@@ -5,6 +5,7 @@ import { ICON_SOLO } from './icons.js'
 export const UpgradeScripts = [
 	// grab these values for later
 
+	// [0]
 	function (context, props) {
 		const result = {
 			updatedConfig: null,
@@ -51,6 +52,7 @@ export const UpgradeScripts = [
 		'config/mute': true,
 	}),
 
+	// [1]
 	function (context, props) {
 		const result = {
 			updatedConfig: null,
@@ -59,7 +61,7 @@ export const UpgradeScripts = [
 		}
 
 		for (let fb of props.feedbacks) {
-			if (fb.type.match(/^solosw_/) && Object.keys(fb.style).length == 0) {
+			if (fb.type?.match(/^solosw_/) && Object.keys(fb.style).length == 0) {
 				fb.style = {
 					color: combineRgb(255, 255, 255),
 					bgcolor: 0,
@@ -70,4 +72,35 @@ export const UpgradeScripts = [
 		}
 		return result
 	},
+
+	function (context, props) {
+		const result = {
+			updatedConfig: null,
+			updatedActions: [],
+			updatedFeedbacks: [],
+		}
+		for (let action of props.actions) {
+			let changed = false
+			let aId = action.actionId
+			if (aId.match(/^send/)) {
+				// chNum changed to num to match other actions
+				if (action.options.chNum != undefined) {
+					action.options.num = action.options.chNum
+					delete action.options.chNum
+					changed = true
+				}
+			}
+			if (aId.match(/^fad|send|mFad|usbFad/)) {
+				action.options.faderLim = false
+				changed = true
+			}
+			if (changed) {
+				result.updatedActions.push(action)
+			}
+		}
+		return result
+	},
+	CreateConvertToBooleanFeedbackUpgradeScript({
+		'snap_color': true,
+	}),
 ]
