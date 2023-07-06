@@ -152,7 +152,7 @@ export function buildSoloDefs(self) {
 					soloFbToStat[actID] = c
 					if (ch.isFader) {
 						let fbDescription = 'Solo ' + ch.description
-						for (let sfx in ['', '_a']) {
+						for (let sfx of ['', '_a']) {
 							const aId = actID + sfx
 							soloActions[aId] = {
 								name: fbDescription + ('' == sfx ? ' Set' : ' Adjust'),
