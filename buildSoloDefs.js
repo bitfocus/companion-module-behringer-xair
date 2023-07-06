@@ -189,7 +189,7 @@ export function buildSoloDefs(self) {
 							soloActions[aId].callback = async (action, context) => {
 								const opt = action.options
 								let strip = '/config/solo/level'
-								let fVal = fadeTo(action.actionId, strip, opt, self)
+								let fVal = await fadeTo(action.actionId, strip, opt, self)
 								if (fVal >= 0) {
 									let arg = {
 										type: 'f',
