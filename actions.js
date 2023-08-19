@@ -150,7 +150,32 @@ export function buildStaticActions(self) {
 		},
 
 		load_snap: {
-			name: 'Load Console Snapshot',
+			name: 'Snapshot: Load',
+			options: [
+				{
+					type: 'textinput',
+					label: 'Snapshot Number 1-64',
+					id: 'snap',
+					default: '1',
+					useVariables: true,
+				},
+			],
+			callback: async (action, context) => {
+				const snap = parseInt(await context.parseVariablesInString(action.options.snap))
+				if (snap < 1 || snap > 64) {
+					const err = [action.controlId, action.actionId, 'Invalid Snapshot #'].join(' → ')
+					self.updateStatus(InstanceStatus.BadConfig, err)
+					self.paramError = true
+				} else {
+					self.updateStatus(InstanceStatus.Ok)
+					self.paramError = false
+					await sendOSCCmd('/-snap/load', { type: 'i', value: snap })
+				}
+			},
+		},
+
+		save_snap_num: {
+			name: 'Snapshot: Save',
 			options: [
 				{
 					type: 'textinput',
@@ -175,16 +200,16 @@ export function buildStaticActions(self) {
 		},
 
 		next_snap: {
-			name: 'Load Next Console Snapshot',
+			name: 'Snapshot: Load Next',
 			options: [],
 			callback: async (action, context) => {
-				const opt = action.options
-				await sendOSCCmd('/-snap/load', { type: 'i', value: parseInt(opt.snap) })
+				const snap = Math.min(++self.currentSnapshot, 64)
+				await sendOSCCmd('/-snap/load', { type: 'i', value: snap })
 			},
 		},
 
 		prev_snap: {
-			name: 'Load Prior Console Snapshot',
+			name: 'Snapshot: Load Prior',
 			options: [],
 			callback: async (action, context) => {
 				const snap = Math.max(--self.currentSnapshot, 1)
@@ -193,10 +218,10 @@ export function buildStaticActions(self) {
 		},
 
 		save_snap: {
-			name: 'Save Current Console Snapshot',
+			name: 'Snapshot: Save Current',
 			options: [],
 			callback: async (action, context) => {
-				const snap = Math.min(--self.currentSnapshot, 1)
+				const snap = self.currentSnapshot
 				await sendOSCCmd('/-snap/save', { type: 'i', value: snap })
 			},
 		},

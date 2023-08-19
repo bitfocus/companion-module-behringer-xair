@@ -34,13 +34,6 @@ class BAirInstance extends InstanceBase {
 		this.PollCount = 30
 		this.PollTimeout = 25
 
-		// let po = 10024
-		// // random local port for each instance
-		// internal.id.split('').forEach(function (c) {
-		// 	po += c.charCodeAt(0)
-		// })
-		// this.port_offset = po
-
 		buildConstants(this)
 	}
 
@@ -191,7 +184,6 @@ class BAirInstance extends InstanceBase {
 	 * Gather list of local mixer IP numbers and names
 	 */
 	async scanForMixers() {
-		let self = this
 		let uPort = this.scanPort
 
 		if (!this.scanPort) {
@@ -202,18 +194,29 @@ class BAirInstance extends InstanceBase {
 				metadata: true,
 			})
 		}
+
+		this.scanPort.on('error', (err) => {
+			this.log('error', 'XAir scan: ' + err.message)
+			this.probeCount = 0 // reset to check every 5 secs
+			this.updateStatus(InstanceStatus.UnknownError, err.message)
+		})
+
 		uPort.open()
 
 		// When the port is read, send an OSC message to, say, SuperCollider
-		uPort.on('ready', function () {
-			self.probeCount = 0
-			self.probe()
-			self.scanner = setInterval(() => {
-				self.probe()
+		uPort.on('ready', () => {
+			this.probeCount = 0
+			this.probe()
+			if (this.scanner != undefined) {
+				clearInterval(this.scanner)
+				delete this.scanner
+			}
+			this.scanner = setInterval(() => {
+				this.probe()
 			}, 5000)
 		})
 
-		uPort.on('message', function (oscMsg, timeTag, info) {
+		uPort.on('message', (oscMsg, timeTag, info) => {
 			if ('/xinfo' == oscMsg.address) {
 				let args = oscMsg.args
 				let newUnit = {
@@ -224,17 +227,17 @@ class BAirInstance extends InstanceBase {
 					m_modelNum: parseInt(args[2].value.match(/\d+/)[0]),
 					m_last: Date.now(),
 				}
-				self.unitsFound[newUnit.m_name] = newUnit
-				if (!self.config.mixer || self.config.mixer == '') {
-					if (newUnit.m_ip == self.config.host) {
-						self.config.mixer = newUnit.m_name
-						self.saveConfig(self.config)
+				this.unitsFound[newUnit.m_name] = newUnit
+				if (!this.config.mixer || this.config.mixer == '') {
+					if (newUnit.m_ip == this.config.host) {
+						this.config.mixer = newUnit.m_name
+						this.saveConfig(this.config)
 					}
 				}
-				for (let u in self.unitsFound) {
+				for (let u in this.unitsFound) {
 					// remove from list if not seen in last 10 minutes
-					if (Date.now() - self.unitsFound[u].m_last > 600000) {
-						delete self.unitsFound[u]
+					if (Date.now() - this.unitsFound[u].m_last > 600000) {
+						delete this.unitsFound[u]
 					}
 				}
 			}
@@ -475,7 +478,7 @@ class BAirInstance extends InstanceBase {
 	faderToDB(f, steps, rp) {
 		// “f” represents OSC float data. f: [0.0, 1.0]
 		// “d” represents the dB float data. d:[-oo, +10]
-		// if "rp" (Relative percent) is true, the function returns a loudness perceptual (base 10/33.22) change in % compared to unity (0dB)
+		// if "rp" (Relative percent) is true, return a loudness perceptual (base 10/33.22) change in % compared to unity (0dB)
 		let d = 0
 
 		if (f >= 0.5) {
@@ -506,163 +509,166 @@ class BAirInstance extends InstanceBase {
 			//		if (this.config.host) {
 			this.oscPort = new OSC.UDPPort({
 				localAddress: '0.0.0.0',
-				localPort: 0,	// random local port
+				localPort: 0, // random local port
 				remoteAddress: this.config.host,
 				remotePort: 10024,
 				metadata: true,
 			})
 
 			// listen for incoming messages
-			this.oscPort.on('message', function (message, timeTag, info) {
+			this.oscPort.on('message', (message, timeTag, info) => {
 				const args = message.args
 				const node = message.address
 				const leaf = node.split('/').pop()
-				self.hostResponse = true
+				this.hostResponse = true
 
-				// self.log('debug', `received ${node} ${args} from ${info.address}`)
-				if (self.xStat[node] !== undefined) {
+				// this.log('debug', `received ${node} ${args} from ${info.address}`)
+				if (this.xStat[node] !== undefined) {
 					let v = args[0].value
 					switch (leaf) {
 						case 'on':
 						case 'lr':
-							self.xStat[node].isOn = v == 1
-							self.checkFeedbacks(self.xStat[node].fbID)
+							this.xStat[node].isOn = v == 1
+							this.checkFeedbacks(this.xStat[node].fbID)
 							break
 						case '1':
 						case '2':
 						case '3':
 						case '4': // '/config/mute/#'
-							self.xStat[node].isOn = v == 1
-							self.checkFeedbacks(self.xStat[node].fbID)
+							this.xStat[node].isOn = v == 1
+							this.checkFeedbacks(this.xStat[node].fbID)
 							break
 						case 'fader':
 						case 'level':
 							v = Math.floor(v * 10000) / 10000
-							self.xStat[node][leaf] = v
-							self.setVariableValues({
-								[self.xStat[node].varID + '_p']: Math.round(v * 100),
-								[self.xStat[node].varID + '_d']: self.faderToDB(v, 1024, false),
-								[self.xStat[node].varID + '_rp']: Math.round(self.faderToDB(v, 1024, true)),
+							this.xStat[node][leaf] = v
+							this.setVariableValues({
+								[this.xStat[node].varID + '_p']: Math.round(v * 100),
+								[this.xStat[node].varID + '_d']: this.faderToDB(v, 1024, false),
+								[this.xStat[node].varID + '_rp']: Math.round(this.faderToDB(v, 1024, true)),
 							})
-							self.xStat[node].idx = self.fLevels[self.xStat[node].fSteps].findIndex((i) => i >= v)
+							this.xStat[node].idx = this.fLevels[this.xStat[node].fSteps].findIndex((i) => i >= v)
 							break
 						case 'name':
 							// no name, use behringer default
-							v = v == '' ? self.xStat[node].defaultName : v
-							self.xStat[node].name = v
-							self.setVariableValues({ [self.xStat[node].fbID]: v })
+							v = v == '' ? this.xStat[node].defaultName : v
+							this.xStat[node].name = v
+							this.setVariableValues({ [this.xStat[node].fbID]: v })
 							if (node.match(/^\/\-snap\//)) {
 								let num = parseInt(node.match(/\d+/)[0])
-								if (num == self.currentSnapshot) {
-									self.setVariableValues({ 's_name': v })
-								} else if (num == self.prevSnapshot) {
-									self.setVariableValues({ 's_name_p': v })
-								} else if (num == self.nextSnapshot) {
-									self.setVariableValues({ 's_name_n': v })
+								if (num == this.currentSnapshot) {
+									this.setVariableValues({ 's_name': v })
+								} else if (num == this.prevSnapshot) {
+									this.setVariableValues({ 's_name_p': v })
+								} else if (num == this.nextSnapshot) {
+									this.setVariableValues({ 's_name_n': v })
 								}
 							}
 							break
 						case 'color':
-							self.xStat[node].color = v
-							self.checkFeedbacks(self.xStat[node].fbID)
+							this.xStat[node].color = v
+							this.checkFeedbacks(this.xStat[node].fbID)
 							break
 						case 'mono':
 						case 'dim':
 						case 'mute': // '/config/solo/'
-							self.xStat[node].isOn = v
-							self.checkFeedbacks(self.xStat[node].fbID)
+							this.xStat[node].isOn = v
+							this.checkFeedbacks(this.xStat[node].fbID)
 							break
 						default:
 							if (node.match(/\/solo/)) {
-								self.xStat[node].isOn = v
-								self.checkFeedbacks(self.xStat[node].fbID)
+								this.xStat[node].isOn = v
+								this.checkFeedbacks(this.xStat[node].fbID)
 							}
 					}
-					self.xStat[node].valid = true
-					if (self.needStats) {
-						self.pollStats()
+					this.xStat[node].valid = true
+					if (this.needStats) {
+						this.pollStats()
 					}
 					// log('debug',message);
 				} else if (node.match(/^\/xinfo$/)) {
-					self.myMixer.name = args[1].value
-					self.myMixer.model = args[2].value
-					self.myMixer.modelNum = parseInt(args[2].value.match(/\d+/)[0])
-					self.myMixer.fw = args[3].value
-					self.myMixer.ip = args[0].value
-					self.setVariableValues({
-						'm_name': self.myMixer.name,
-						'm_model': self.myMixer.model,
-						'm_modelNum': self.myMixer.modelNum,
-						'm_fw': self.myMixer.fw,
-						'm_ip': self.myMixer.ip,
+					this.myMixer.name = args[1].value
+					this.myMixer.model = args[2].value
+					this.myMixer.modelNum = parseInt(args[2].value.match(/\d+/)[0])
+					this.myMixer.fw = args[3].value
+					this.myMixer.ip = args[0].value
+					this.setVariableValues({
+						'm_name': this.myMixer.name,
+						'm_model': this.myMixer.model,
+						'm_modelNum': this.myMixer.modelNum,
+						'm_fw': this.myMixer.fw,
+						'm_ip': this.myMixer.ip,
 					})
 				} else if (node.match(/^\/\-snap\/index$/)) {
 					const s = parseInt(args[0].value)
-					const n = self.xStat[self.snapshot[s]].name
-					self.currentSnapshot = s
-					self.setVariableValues({
+					const n = this.xStat[this.snapshot[s]].name
+					this.currentSnapshot = s
+					this.setVariableValues({
 						's_index': s,
 						's_name': n,
 						['s_name_' + pad0(s)]: n,
 					})
-					self.prevSnapshot = 1 >= s ? 0 : s - 1
-					self.nextSnapshot = 64 <= s ? 0 : s + 1
-					self.setVariableValues({
-						's_name_p': self.xStat[self.snapshot[self.prevSnapshot]]?.name ?? '-----',
-						's_name_n': self.xStat[self.snapshot[self.nextSnapshot]]?.name ?? '-----',
+					this.prevSnapshot = 1 >= s ? 0 : s - 1
+					this.nextSnapshot = 64 <= s ? 0 : s + 1
+					this.setVariableValues({
+						's_name_p': this.xStat[this.snapshot[this.prevSnapshot]]?.name ?? '-----',
+						's_name_n': this.xStat[this.snapshot[this.nextSnapshot]]?.name ?? '-----',
 					})
-					self.checkFeedbacks('snap_color')
-					self.sendOSC('/-snap/' + pad0(s) + '/name', [])
+					this.checkFeedbacks('snap_color')
+					this.sendOSC('/-snap/' + pad0(s) + '/name', [])
 				}
 				// else {
 				// 	log('debug',message.address, args);
 				// }
 			})
 
-			this.oscPort.on('ready', function () {
-				self.updateStatus(InstanceStatus.Connecting, 'Loading console status')
-				self.log('info', 'Sync started')
-				self.firstPoll()
-				self.heartbeat = setInterval(function () {
-					self.pulse()
+			this.oscPort.on('ready', () => {
+				this.updateStatus(InstanceStatus.Connecting, 'Loading console status')
+				this.Connected = true
+				this.log('info', 'Sync started')
+				this.firstPoll()
+				this.heartbeat = setInterval(() => {
+					this.pulse()
 				}, 9500) // just before 10 sec expiration
-				self.blinker = setInterval(function () {
-					self.blink()
+				this.blinker = setInterval(() => {
+					this.blink()
 				}, 1000)
-				self.fader = setInterval(function () {
-					self.doFades()
-				}, 1000 / self.fadeResolution)
+				this.fader = setInterval(() => {
+					this.doFades()
+				}, 1000 / this.fadeResolution)
 			})
 
-			this.oscPort.on('close', function () {
-				if (self.heartbeat) {
-					clearInterval(self.heartbeat)
-					delete self.heartbeat
+			this.oscPort.on('close', () => {
+				this.connected = false
+				if (this.heartbeat) {
+					clearInterval(this.heartbeat)
+					delete this.heartbeat
 				}
-				if (self.blinker) {
-					clearInterval(self.blinker)
-					delete self.blinker
+				if (this.blinker) {
+					clearInterval(this.blinker)
+					delete this.blinker
 				}
-				if (self.fader) {
-					clearInterval(self.fader)
-					delete self.fader
+				if (this.fader) {
+					clearInterval(this.fader)
+					delete this.fader
 				}
 			})
 
-			this.oscPort.on('error', function (err) {
-				self.log('error', 'Error: ' + err.message)
-				self.updateStatus(InstanceStatus.UnknownError, err.message)
-				if (self.heartbeat) {
-					clearInterval(self.heartbeat)
-					delete self.heartbeat
+			this.oscPort.on('error', (err) => {
+				this.log('error', 'Error: ' + err.message)
+				this.updateStatus(InstanceStatus.UnknownError, err.message)
+				this.connected = false
+				if (this.heartbeat) {
+					clearInterval(this.heartbeat)
+					delete this.heartbeat
 				}
-				if (self.blinker) {
-					clearInterval(self.blinker)
-					delete self.blinker
+				if (this.blinker) {
+					clearInterval(this.blinker)
+					delete this.blinker
 				}
-				if (self.fader) {
-					clearInterval(self.fader)
-					delete self.fader
+				if (this.fader) {
+					clearInterval(this.fader)
+					delete this.fader
 				}
 			})
 
@@ -737,16 +743,16 @@ class BAirInstance extends InstanceBase {
 					const snap = parseInt(await context.parseVariablesInString(feedback.options.theSnap))
 					if (snap < 1 || snap > 64) {
 						const err = [feedback.controlId, feedback.feedbackId, 'Invalid Snapshot #'].join(' → ')
-						self.updateStatus(InstanceStatus.BadConfig, err)
-						self.paramError = true
+						this.updateStatus(InstanceStatus.BadConfig, err)
+						this.paramError = true
 					} else {
-						return snap == self.currentSnapshot
+						return snap == this.currentSnapshot
 					}
 				},
 			},
 		}
-		Object.assign(feedbacks, self.muteFeedbacks)
-		Object.assign(feedbacks, self.colorFeedbacks)
+		Object.assign(feedbacks, this.muteFeedbacks)
+		Object.assign(feedbacks, this.colorFeedbacks)
 		this.setFeedbackDefinitions(feedbacks)
 	}
 
