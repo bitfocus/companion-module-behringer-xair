@@ -720,7 +720,7 @@ export function buildStripDefs(self) {
 				color: combineRgb(255, 255, 255),
 				bgcolor: combineRgb(128, 0, 0),
 			},
-			callback: function (feedback, context) {
+			callback: (feedback, context) => {
 				const theChannel = feedback.options.theChannel
 				const fbWhich = feedback.feedbackId
 				const state = feedback.options.state != '0'
@@ -770,7 +770,7 @@ export function buildStripDefs(self) {
 					color: combineRgb(192, 192, 192),
 					bgcolor: combineRgb(0, 92, 128),
 				},
-				callback: function (feedback, context) {
+				callback: (feedback, context) => {
 					const theChannel = feedback.options.theChannel
 					const fbWhich = feedback.feedbackId
 					const state = feedback.options.state != '0'
@@ -807,7 +807,7 @@ export function buildStripDefs(self) {
 				name: 'Color of ' + fbDescription,
 				description: 'Use button colors from ' + fbDescription,
 				options: [],
-				callback: function (feedback, context) {
+				callback: (feedback, context) => {
 					const theChannel = feedback.options.theChannel
 					const fbWhich = feedback.feedbackId
 					let stat

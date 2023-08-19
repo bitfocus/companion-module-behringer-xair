@@ -41,10 +41,11 @@ Solo Level Adjust | Adjust the Solo level up or down by steps **see notes*
 Solo Dim | Dims the Solo output level to the value configured in the console.
 Solo Mute | Mutes the Solo output
 Solo Mono | Controls the Mono mix-down of the Solo output
-Load Console Snapshot | Loads the given Snapshot from the consoles internal Snapshot list 1-64
-Load Previous Snapshot | Loads the previous (numerical) snapshot **see notes*
-Load Next Snapshot | Loads the next (numerical) snapshot **see notes*
-Save Current Snapshot | Saves/overwrites the current snapshot (NO CONFIRMATION) **see notes*
+Snapshot: Load | Loads the given Snapshot from the console internal Snapshot list 1-64
+Snapshot: Save | Save the given Snapshot to the console internal Snapshot list 1-64
+Snapshot: Load Previous | Loads the previous (numerical) snapshot **see notes*
+Snapshot: Load Next  | Loads the next (numerical) snapshot **see notes*
+Snapshot: Save Current | Saves/overwrites/updates the current snapshot (NO CONFIRMATION) **see notes*
 Tape Operation | Stop,Play,PlayPause,Record,RecordPause,Fast Forward,Rewind of the tape Deck
 
 **Note *mute, solo, processing*:** All mute, solo, and processing actions also have a Toggle option that inverts the current state of the board setting.
