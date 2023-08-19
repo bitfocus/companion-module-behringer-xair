@@ -20,7 +20,7 @@ export const UpgradeScripts = [
 					result.updatedActions.push(action)
 				}
 			}
-			if ('mute_grp' == action.action) {
+			if ('mute_grp' == action.actionId) {
 				if (action.options.mute === null) {
 					action.options.mute = '1'
 					result.updatedActions.push(action)
@@ -61,7 +61,7 @@ export const UpgradeScripts = [
 		}
 
 		for (let fb of props.feedbacks) {
-			if (fb.type?.match(/^solosw_/) && Object.keys(fb.style).length == 0) {
+			if (fb.feedbackId?.match(/^solosw_/) && Object.keys(fb.style).length == 0) {
 				fb.style = {
 					color: combineRgb(255, 255, 255),
 					bgcolor: 0,
