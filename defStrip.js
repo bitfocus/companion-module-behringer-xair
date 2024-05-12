@@ -105,7 +105,7 @@ export const defStrip = [
 		'digits': 0,
 		'min': 0,
 		'max': 0,
-		'description': 'USB(12/16)/Aux In(18)',
+		'description': 'USB(x12/x16)\nAux In(x18)',
 		'label': 'Aux',
 		'muteID': 'usbMute',
 		'fadeID': 'usbFad',

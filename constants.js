@@ -7,7 +7,7 @@ export function buildConstants(self) {
 	for (let i = 0; i < 1024; i++) {
 		self.fLevels[1024][i] = Math.min(
 			1.0,
-			Math.floor((Math.round(self.stepsToFader(i, 1024) * 1023.5) / 1023) * 10000) / 10000
+			Math.floor((Math.round(self.stepsToFader(i, 1024) * 1023.5) / 1023) * 10000) / 10000,
 		)
 	}
 
@@ -18,13 +18,14 @@ export function buildConstants(self) {
 		{ op: '_r', act: 'Recall' },
 	]
 
-
 	// pre-set linear values for various other 'levels'
 	const lvls = [
-		161, // sends
+		161, // sends, solo level
 		101, // pan
 		145, // trim, headamp gain
+		73, // solo source trim
 		65, // aux gain
+		40, // solo dim att/gain
 	]
 
 	for (let lvl of lvls) {
@@ -96,5 +97,12 @@ export function buildConstants(self) {
 		{ label: 'RECORD', id: '4' },
 		{ label: 'FAST FORWARD', id: '5' },
 		{ label: 'REWIND', id: '6' },
+	]
+
+	self.BAR_LOCATION = [
+		{ id: 't', label: 'Top' },
+		{ id: 'b', label: 'Bottom' },
+		{ id: 'l', label: 'Left' },
+		{ id: 'r', label: 'Right' },
 	]
 }

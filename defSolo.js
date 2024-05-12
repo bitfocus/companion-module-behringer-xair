@@ -63,6 +63,19 @@ export const defSolo = [
 				actID: 'level',
 				description: 'Level',
 				isFader: true,
+				fadeType: 161,
+			},
+			{
+				actID: 'sourcetrim',
+				description: 'Source Trim',
+				isFader: true,
+				fadeType: 73,
+			},
+			{
+				actID: 'dimatt',
+				description: 'Dim Gain/Att',
+				isFader: true,
+				fadeType: 40,
 			},
 			{
 				actID: 'mute',
