@@ -259,10 +259,11 @@ export function buildStripDefs(self) {
 	}
 
 	for (const theStrip of defStrip) {
-		let fbID = theStrip.id
-		let chID = '/' + fbID
+		let stripID = theStrip.id
+		let chID = '/' + stripID
 		let muteID = theStrip.muteID
 		let fadeID = theStrip.fadeID
+		let feedbackID = ''
 		let d = theStrip.digits
 		let muteChoice = [theStrip.hasOn ? '0' : '1', theStrip.hasOn ? '1' : '0', '2']
 		let muteSfx = (theStrip.hasMix ? '/mix' : '') + (theStrip.hasOn ? '/on' : '')
@@ -489,73 +490,73 @@ export function buildStripDefs(self) {
 
 		if (d == 0) {
 			let theID = chID + muteSfx
-			let fID = ''
-			fbToStat[fbID] = theID
+			feedbackID = unSlash(stripID)
+			fbToStat[feedbackID] = theID
 			stat[theID] = {
 				isOn: false,
 				hasOn: theStrip.hasOn,
 				valid: false,
-				fbID: fbID,
+				fbID: feedbackID,
 				polled: 0,
 			}
 			// 'proc' routing toggles
 			for (let p of theStrip.proc) {
 				theID = `${chID}/${defProc[p].node}`
-				fID = `${fbID}_${p}`
+				feedbackID = `${unSlash(stripID)}_${p}`
 				stat[theID] = {
 					isOn: false,
 					hasOn: true,
 					valid: false,
-					fbID: fID,
+					fbID: feedbackID,
 					polled: 0,
 				}
-				fbToStat[fID] = theID
+				fbToStat[feedbackID] = theID
 			}
 			theID = chID + fadeSfx
-			fID = 'f_' + unSlash(fbID)
-			fbToStat[fID] = theID
+			feedbackID = 'f_' + unSlash(stripID)
+			fbToStat[feedbackID] = theID
 			stat[theID] = {
 				fader: 0.0,
 				valid: false,
-				fbID: fID,
+				fbID: feedbackID,
 				fSteps: 1024,
-				varID: fID,
+				varID: feedbackID,
 				polled: 0,
 			}
 			defVariables.push({
 				name: theStrip.description + ' dB',
-				variableId: fID + '_d',
+				variableId: feedbackID + '_d',
 			})
 			defVariables.push({
 				name: theStrip.description + ' %',
-				variableId: fID + '_p',
+				variableId: feedbackID + '_p',
 			})
 			defVariables.push({
 				name: theStrip.description + ' % Relative Loudness',
-				variableId: fID + '_rp',
+				variableId: feedbackID + '_rp',
 			})
 			if ('' != labelSfx) {
 				theID = chID + labelSfx + '/name'
-				fID = 'l_' + unSlash(fbID)
-				fbToStat[fID] = theID
+				feedbackID = 'l_' + unSlash(stripID)
+				fbToStat[feedbackID] = theID
 				stat[theID] = {
-					name: fbID,
+					name: stripID,
 					defaultName: defaultLabel,
 					valid: false,
-					fbID: fID,
+					fbID: feedbackID,
 					polled: 0,
 				}
 				defVariables.push({
 					name: theStrip.description + ' Label',
-					variableId: fID,
+					variableId: feedbackID,
 				})
 				theID = chID + labelSfx + '/color'
-				fID = 'c_' + unSlash(fbID)
-				fbToStat[fID] = theID
+				feedbackID = 'c_' + unSlash(stripID)
+				fbToStat[feedbackID] = theID
 				stat[theID] = {
 					color: 0,
 					valid: false,
-					fbID: fID,
+					fbID: feedbackID,
 					polled: 0,
 				}
 			}
@@ -565,79 +566,79 @@ export function buildStripDefs(self) {
 					let sChan = b < 7 ? b : b - 6
 					theID = chID + '/mix/' + pad0(b) + '/level'
 					let whichSend = b < 7 ? ' Bus ' + b : ' FX ' + (b - 6)
-					fID = 's_' + unSlash(fbID) + '_' + bOrF + sChan
-					fbToStat[fID] = theID
+					feedbackID = 's_' + unSlash(stripID) + '_' + bOrF + sChan
+					fbToStat[feedbackID] = theID
 					stat[theID] = {
 						level: 0.0,
 						valid: false,
-						fbID: fID,
+						fbID: feedbackID,
 						fSteps: 161,
-						varID: fID,
+						varID: feedbackID,
 						polled: 0,
 					}
 					defVariables.push({
 						name: theStrip.description + ' ' + whichSend + ' dB',
-						variableId: fID + '_d',
+						variableId: feedbackID + '_d',
 					})
 					defVariables.push({
 						name: theStrip.description + ' ' + whichSend + ' %',
-						variableId: fID + '_p',
+						variableId: feedbackID + '_p',
 					})
 					defVariables.push({
 						name: theStrip.description + ' ' + whichSend + ' % Relative Loudness',
-						variableId: fID + '_rp',
+						variableId: feedbackID + '_rp',
 					})
 				}
 			}
 		} else {
 			for (let c = theStrip.min; c <= theStrip.max; c++) {
 				let theID = chID + '/' + pad0(c, d) + muteSfx
-				let fID = fbID + '_' + c
-				fbToStat[fID] = theID
+				let feedbackID = stripID + '_' + c
+				fbToStat[feedbackID] = theID
 				stat[theID] = {
 					isOn: false,
 					hasOn: theStrip.hasOn,
 					valid: false,
-					fbID: fbID,
+					fbID: feedbackID,
 					polled: 0,
 				}
 				// 'proc' routing toggles
 				for (const p of theStrip.proc) {
 					theID = `${chID}/${pad0(c, d)}/${defProc[p].node}`
-					let fpID = `${unSlash(fbID)}_${p}`
-					fID = `${fpID}${c}`
-					fbToStat[fID] = theID
+					//let fpID = `${unSlash(fbID)}_${p}`
+					feedbackID = `${unSlash(stripID)}${c}`
+					fbToStat[feedbackID] = theID
 					stat[theID] = {
 						isOn: false,
 						hasOn: true,
 						valid: false,
-						fbID: fpID,
+						fbID: feedbackID,
 						polled: 0,
 					}
 				}
 				if ('' != fadeSfx) {
 					theID = chID + '/' + pad0(c, d) + fadeSfx
-					fID = 'f_' + unSlash(fbID) + c
-					fbToStat[fID] = theID
+					feedbackID = 'f_' + unSlash(stripID) + c
+					fbToStat[feedbackID] = theID
 					stat[theID] = {
 						fader: 0.0,
 						valid: false,
 						fSteps: 1024,
-						fbID: fID,
-						varID: fID,
+						fbID: feedbackID,
+						varID: feedbackID,
 						polled: 0,
 					}
 					defVariables.push({
 						name: theStrip.description + ' ' + c + ' dB',
-						variableId: fID + '_d',
+						variableId: feedbackID + '_d',
 					})
 					defVariables.push({
 						name: theStrip.description + ' ' + c + ' %',
-						variableId: fID + '_p',
+						variableId: feedbackID + '_p',
 					})
 					defVariables.push({
 						name: theStrip.description + ' ' + c + ' % Relative Loudness',
-						variableId: fID + '_rp',
+						variableId: feedbackID + '_rp',
 					})
 					if (theStrip.hasLevel) {
 						for (let b = 1; b < 11; b++) {
@@ -645,53 +646,53 @@ export function buildStripDefs(self) {
 							let sChan = b < 7 ? b : b - 6
 							theID = chID + '/' + pad0(c, d) + '/mix/' + pad0(b) + '/level'
 							let whichSend = b < 7 ? ' Bus ' + b : ' FX ' + (b - 6)
-							fID = 's_' + unSlash(fbID) + c + '_' + bOrF + sChan
-							fbToStat[fID] = theID
+							feedbackID = 's_' + unSlash(stripID) + c + '_' + bOrF + sChan
+							fbToStat[feedbackID] = theID
 							stat[theID] = {
 								level: 0.0,
 								valid: false,
-								fbID: fID,
+								fbID: feedbackID,
 								fSteps: 161,
-								varID: fID,
+								varID: feedbackID,
 								polled: 0,
 							}
 							defVariables.push({
-								name: capFirst(fbID) + ' ' + c + whichSend + ' dB',
-								variableId: fID + '_d',
+								name: capFirst(stripID) + ' ' + c + whichSend + ' dB',
+								variableId: feedbackID + '_d',
 							})
 							defVariables.push({
-								name: capFirst(fbID) + ' ' + c + whichSend + ' %',
-								variableId: fID + '_p',
+								name: capFirst(stripID) + ' ' + c + whichSend + ' %',
+								variableId: feedbackID + '_p',
 							})
 							defVariables.push({
-								name: capFirst(fbID) + ' ' + c + whichSend + ' % Relative Loudness',
-								variableId: fID + '_rp',
+								name: capFirst(stripID) + ' ' + c + whichSend + ' % Relative Loudness',
+								variableId: feedbackID + '_rp',
 							})
 						}
 					}
 				}
 				if ('' != labelSfx) {
 					theID = chID + '/' + pad0(c, d) + labelSfx + '/name'
-					fID = 'l_' + unSlash(fbID) + c
-					fbToStat[fID] = theID
+					feedbackID = 'l_' + unSlash(stripID) + c
+					fbToStat[feedbackID] = theID
 					stat[theID] = {
-						name: fbID + c,
+						name: stripID + c,
 						defaultName: defaultLabel + c,
 						valid: false,
-						fbID: fID,
+						fbID: feedbackID,
 						polled: 0,
 					}
 					defVariables.push({
 						name: theStrip.description + ' ' + c + ' Label',
-						variableId: fID,
+						variableId: feedbackID,
 					})
 					theID = chID + '/' + pad0(c, d) + labelSfx + '/color'
-					fID = 'c_' + unSlash(fbID) + c
-					fbToStat[fID] = theID
+					feedbackID = 'c_' + unSlash(stripID) + c
+					fbToStat[feedbackID] = theID
 					stat[theID] = {
 						color: 0,
 						valid: false,
-						fbID: 'c_' + unSlash(fbID),
+						fbID: feedbackID,
 						polled: 0,
 					}
 				}
@@ -700,7 +701,7 @@ export function buildStripDefs(self) {
 
 		// mute feedback defs
 		let fbDescription = theStrip.description + ' ' + (theStrip.hasOn ? 'Mute' : '') + ' status'
-		muteFeedbacks[fbID] = {
+		muteFeedbacks[stripID] = {
 			type: 'boolean',
 			name: 'Indicate ' + fbDescription,
 			description: 'Indicate ' + fbDescription + ' on button',
@@ -735,7 +736,7 @@ export function buildStripDefs(self) {
 			},
 		}
 		if (d > 0) {
-			muteFeedbacks[fbID].options.push({
+			muteFeedbacks[stripID].options.push({
 				type: 'number',
 				label: theStrip.description + ' number',
 				id: 'theChannel',
@@ -749,8 +750,8 @@ export function buildStripDefs(self) {
 		// 'proc' routing feedback toggles
 		for (let p of theStrip.proc) {
 			fbDescription = `${theStrip.description} ${defProc[p].desc} status`
-			let fID = `${fbID}_${p}`
-			muteFeedbacks[fID] = {
+			let feedbackID = `${unSlash(stripID)}_${p}`
+			muteFeedbacks[feedbackID] = {
 				type: 'boolean',
 				name: 'Indicate ' + fbDescription,
 				description: 'Indicate ' + fbDescription + ' on button',
@@ -785,7 +786,7 @@ export function buildStripDefs(self) {
 				},
 			}
 			if (d > 0) {
-				muteFeedbacks[fID].options.push({
+				muteFeedbacks[feedbackID].options.push({
 					type: 'number',
 					label: theStrip.description + ' number',
 					id: 'theChannel',
@@ -801,7 +802,7 @@ export function buildStripDefs(self) {
 		// channel color feedbacks
 		if (theStrip.hasOn) {
 			fbDescription = theStrip.description + ' label'
-			let cID = 'c_' + unSlash(fbID)
+			let cID = 'c_' + unSlash(stripID)
 			colorFeedbacks[cID] = {
 				type: 'advanced',
 				name: 'Color of ' + fbDescription,

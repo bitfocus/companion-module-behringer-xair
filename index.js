@@ -8,7 +8,8 @@ import { buildStripDefs } from './buildStripDefs.js'
 import { buildSoloDefs } from './buildSoloDefs.js'
 import { buildStaticActions } from './actions.js'
 import { buildSnapshotDefs } from './buildSnapshotDefs.js'
-
+import { buildMeterDefs } from './buildMeterDefs.js'
+import { getConfigFields } from './config.js'
 import { ICON_SOLO } from './icons.js'
 import { pad0 } from './helpers.js'
 
@@ -18,15 +19,16 @@ class BAirInstance extends InstanceBase {
 
 		// stat id from mixer address
 		this.fbToStat = {}
+		this.fbToMeter = {}
 
 		this.soloOffset = {}
 		this.actionDefs = {}
 		this.haActionDefs = {}
 		this.muteFeedbacks = {}
+		this.meterFeedbacks = {}
 		this.colorFeedbacks = {}
 		this.variableDefs = []
 		this.fLevels = {}
-		this.REGEX_PERCENT = /^-?([0-9]|[1-9][0-9]|100)$/
 		this.blinkingFB = {}
 		this.crossFades = {}
 		this.unitsFound = {}
@@ -54,6 +56,9 @@ class BAirInstance extends InstanceBase {
 
 		// mixer state
 		this.xStat = {}
+		// meters
+		this.mStat = {}
+
 		// level/fader value store
 		this.tempStore = {}
 
@@ -72,6 +77,8 @@ class BAirInstance extends InstanceBase {
 		buildSoloDefs(this)
 		buildStaticActions(this)
 		buildSnapshotDefs(this)
+		buildMeterDefs(this)
+
 		//buildHeadampDefs(this)
 		this.setActionDefinitions(this.actionDefs)
 		this.buildStaticFeedbacks(this)
@@ -94,7 +101,10 @@ class BAirInstance extends InstanceBase {
 		}
 		// do we have a name for this host?
 		if (config.scan) {
-			if (!('' == config.mixer || 'none' == config.mixer) && Object.keys(this.unitsFound).length > 0) {
+			if (
+				!('' == config.mixer || 'none' == config.mixer) &&
+				Object.keys(this.unitsFound).length > 0
+			) {
 				for (let m in this.unitsFound) {
 					if (this.unitsFound[m].m_ip == config.host) {
 						config.mixer = m
@@ -109,8 +119,8 @@ class BAirInstance extends InstanceBase {
 				}
 			}
 		}
-		this.destroy() // re-start all connections in case host changed.
-		this.init(config)
+		await this.destroy() // re-start all connections in case host changed.
+		await this.init(config)
 	}
 
 	// When module gets deleted
@@ -146,6 +156,8 @@ class BAirInstance extends InstanceBase {
 	 */
 	pulse() {
 		this.sendOSC('/xremote', [])
+		// ask for meter data
+		this.sendOSC('/meters', [{ type: 's', value: '/meters/1' }])
 		// any leftover status needed?
 		if (this.needStats) {
 			this.pollStats()
@@ -174,7 +186,7 @@ class BAirInstance extends InstanceBase {
 					args: [],
 				},
 				'255.255.255.255',
-				10024
+				10024,
 			)
 		}
 		this.probeCount++
@@ -257,7 +269,8 @@ class BAirInstance extends InstanceBase {
 			let atStep = c.atStep
 			let newVal = c.startVal + c.delta * atStep
 
-			arg.value = Math.sign(c.delta) > 0 ? Math.min(c.finalVal, newVal) : Math.max(c.finalVal, newVal)
+			arg.value =
+				Math.sign(c.delta) > 0 ? Math.min(c.finalVal, newVal) : Math.max(c.finalVal, newVal)
 
 			this.sendOSC(f, arg)
 
@@ -469,10 +482,30 @@ class BAirInstance extends InstanceBase {
 		this.pulse()
 	}
 
+	/**
+	 * Calculate linear fader value (0..1) for a given 'step'
+	 * 	depending on total 'steps'
+	 * @param {integer} i - which step
+	 * @param {integer} steps - number of steps for this fader parameter
+	 * @returns {float}
+	 */
 	stepsToFader(i, steps) {
 		let res = i / (steps - 1)
 
 		return Math.floor(res * 10000) / 10000
+	}
+
+	/**
+	 * Calculate logarithmic fader value (0..1) for a given 'step'
+	 * 	depending on total 'steps'
+	 * @param {integer} i - which step
+	 * @param {integer} steps - number of steps for this fader parameter
+	 * @returns {float}
+	 */
+	logFaderToDB(f, steps) {
+		let res = i / (steps - 1)
+
+		return Math.floor(fmin * exp(log(fmax / fmin) * f) / 10000)
 	}
 
 	faderToDB(f, steps, rp) {
@@ -494,7 +527,8 @@ class BAirInstance extends InstanceBase {
 			? rp
 				? '0'
 				: '-oo'
-			: (rp ? '' : d > 0 ? '+' : '') + (rp ? 100 * 10 ** (d / 33.22) : Math.round(d * 1023.5) / 1024).toFixed(1)
+			: (rp ? '' : d > 0 ? '+' : '') +
+					(rp ? 100 * 10 ** (d / 33.22) : Math.round(d * 1023.5) / 1024).toFixed(1)
 	}
 
 	init_osc() {
@@ -616,10 +650,15 @@ class BAirInstance extends InstanceBase {
 					})
 					this.checkFeedbacks('snap_color')
 					this.sendOSC('/-snap/' + pad0(s) + '/name', [])
+				} else if (node.match(/^\/meters\//)) {
+					// meters here
+					switch (leaf) {
+						case '1':
+							this.parseMeters1(args[0].value)
+							break
+					}
+					this.log('debug', message.address, args)
 				}
-				// else {
-				// 	log('debug',message.address, args);
-				// }
 			})
 
 			this.oscPort.on('ready', () => {
@@ -674,6 +713,46 @@ class BAirInstance extends InstanceBase {
 
 			this.oscPort.open()
 		}
+	}
+
+	parseMeters1(buf) {
+		if (buf[0] != 40) return
+
+		// if (this.lastMeter && Date.now() - this.lastMeter < 50) {
+		// 	return
+		// }
+
+		let data = new DataView(buf.slice(4).buffer)
+
+		let variables = {}
+		let feedbacks = []
+
+		for (let i = 0; i < 40; i++) {
+			const m = this.meter1[i]
+			let newVal = data.getInt16(i * 2, true) / 256
+			const mv = this.mStat[m]
+			let total = mv.total
+			const oldVal = mv.dbVal
+			mv.valid = true
+			mv.count = ++mv.count % 10
+			total -= mv.samples[mv.count]
+			mv.samples[mv.count] = newVal
+			total += newVal
+			mv.total = total
+			let val = Math.round(total) / 10 // Math.round(total / 256.0 ) / 10
+			mv.dbVal = newVal
+			feedbacks.push(mv.fbID)
+			// newVal = Math.round((val / 256.0) * 10) / 10
+			// if (['v_ch15','v_ch16'].includes(mv.vName)) {
+			// 	console.log(`${mv.vName} = ${val}`)
+			// }
+			if (this.lastMeter && Date.now() - this.lastMeter > 50) {
+				variables[mv.vName] = Math.max(val, -60.0)
+			}
+		}
+		this.setVariableValues(variables)
+		this.checkFeedbacks(feedbacks)
+		this.lastMeter = Date.now()
 	}
 
 	// define static instance variables
@@ -753,48 +832,8 @@ class BAirInstance extends InstanceBase {
 		}
 		Object.assign(feedbacks, this.muteFeedbacks)
 		Object.assign(feedbacks, this.colorFeedbacks)
+		Object.assign(feedbacks, this.meterFeedbacks)
 		this.setFeedbackDefinitions(feedbacks)
-	}
-
-	// Return config fields for web config
-	getConfigFields() {
-		let cf = []
-		cf.push({
-			type: 'textinput',
-			id: 'host',
-			label: 'Target IP',
-			tooltip: 'The IP of the MR / XR console',
-			width: 6,
-			default: '0.0.0.0',
-			regex: Regex.IP,
-		})
-		cf.push({
-			type: 'checkbox',
-			id: 'scan',
-			label: 'Scan network for XAir mixers?',
-			default: true,
-			width: 12,
-		})
-
-		let ch = []
-		if (Object.keys(this.unitsFound || {}).length == 0) {
-			ch = [{ id: 'none', label: 'No XAir units located' }]
-		} else {
-			let unit = this.unitsFound
-			for (let u in unit) {
-				ch.push({ id: unit[u].m_name, label: `${unit[u].m_name} (${unit[u].m_ip})` })
-			}
-		}
-		cf.push({
-			type: 'dropdown',
-			id: 'mixer',
-			label: 'Select Mixer by Name',
-			tooltip: 'Name and IP of mixers on the network',
-			width: 12,
-			default: ch[0].id,
-			choices: ch,
-		})
-		return cf
 	}
 
 	async sendOSC(node, arg) {
