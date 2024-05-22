@@ -1,3 +1,5 @@
+import { Regex } from '@companion-module/base'
+
 // Return config fields for web config
 	export function getConfigFields() {
 		let cf = []

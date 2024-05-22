@@ -35,6 +35,7 @@ class BAirInstance extends InstanceBase {
 
 		this.PollCount = 30
 		this.PollTimeout = 25
+    this.getConfigFields = getConfigFields
 
 		buildConstants(this)
 	}
