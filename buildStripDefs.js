@@ -605,8 +605,8 @@ export function buildStripDefs(self) {
 				// 'proc' routing toggles
 				for (const p of theStrip.proc) {
 					theID = `${chID}/${pad0(c, d)}/${defProc[p].node}`
-					//let fpID = `${unSlash(fbID)}_${p}`
-					feedbackID = `${unSlash(stripID)}${c}`
+					//let fpID = `${unSlash(feedbackID)}_${p}`
+					feedbackID = `${unSlash(stripID)}_${p}${c}`
 					fbToStat[feedbackID] = theID
 					stat[theID] = {
 						isOn: false,
