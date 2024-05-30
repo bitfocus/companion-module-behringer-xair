@@ -35,7 +35,7 @@ class BAirInstance extends InstanceBase {
 
 		this.PollCount = 30
 		this.PollTimeout = 25
-    this.getConfigFields = getConfigFields
+		this.getConfigFields = getConfigFields
 
 		buildConstants(this)
 	}
@@ -102,10 +102,7 @@ class BAirInstance extends InstanceBase {
 		}
 		// do we have a name for this host?
 		if (config.scan) {
-			if (
-				!('' == config.mixer || 'none' == config.mixer) &&
-				Object.keys(this.unitsFound).length > 0
-			) {
+			if (!('' == config.mixer || 'none' == config.mixer) && Object.keys(this.unitsFound).length > 0) {
 				for (let m in this.unitsFound) {
 					if (this.unitsFound[m].m_ip == config.host) {
 						config.mixer = m
@@ -187,7 +184,7 @@ class BAirInstance extends InstanceBase {
 					args: [],
 				},
 				'255.255.255.255',
-				10024,
+				10024
 			)
 		}
 		this.probeCount++
@@ -270,8 +267,7 @@ class BAirInstance extends InstanceBase {
 			let atStep = c.atStep
 			let newVal = c.startVal + c.delta * atStep
 
-			arg.value =
-				Math.sign(c.delta) > 0 ? Math.min(c.finalVal, newVal) : Math.max(c.finalVal, newVal)
+			arg.value = Math.sign(c.delta) > 0 ? Math.min(c.finalVal, newVal) : Math.max(c.finalVal, newVal)
 
 			this.sendOSC(f, arg)
 
@@ -439,7 +435,7 @@ class BAirInstance extends InstanceBase {
 				stillNeed = true
 				if (this.xStat[id].polled < timeOut) {
 					this.sendOSC(id)
-					this.log('debug', 'sending ' + id)
+					// this.log('debug', `sending ${id}`)
 					this.xStat[id].polled = timeNow
 					counter++
 					// only allow 'PollCount' queries during one cycle
@@ -506,7 +502,7 @@ class BAirInstance extends InstanceBase {
 	logFaderToDB(f, steps) {
 		let res = i / (steps - 1)
 
-		return Math.floor(fmin * exp(log(fmax / fmin) * f) / 10000)
+		return Math.floor((fmin * exp(log(fmax / fmin) * f)) / 10000)
 	}
 
 	faderToDB(f, steps, rp) {
@@ -528,8 +524,7 @@ class BAirInstance extends InstanceBase {
 			? rp
 				? '0'
 				: '-oo'
-			: (rp ? '' : d > 0 ? '+' : '') +
-					(rp ? 100 * 10 ** (d / 33.22) : Math.round(d * 1023.5) / 1024).toFixed(1)
+			: (rp ? '' : d > 0 ? '+' : '') + (rp ? 100 * 10 ** (d / 33.22) : Math.round(d * 1023.5) / 1024).toFixed(1)
 	}
 
 	init_osc() {
@@ -555,6 +550,7 @@ class BAirInstance extends InstanceBase {
 				const args = message.args
 				const node = message.address
 				const leaf = node.split('/').pop()
+				const top = node.split('/')[1]
 				this.hostResponse = true
 
 				// this.log('debug', `received ${node} ${args} from ${info.address}`)
@@ -563,14 +559,14 @@ class BAirInstance extends InstanceBase {
 					switch (leaf) {
 						case 'on':
 						case 'lr':
-							this.xStat[node].isOn = v == 1
+							this.xStat[node].isOn = !!v
 							this.checkFeedbacks(this.xStat[node].fbID)
 							break
 						case '1':
 						case '2':
 						case '3':
 						case '4': // '/config/mute/#'
-							this.xStat[node].isOn = v == 1
+							this.xStat[node].isOn = !!v
 							this.checkFeedbacks(this.xStat[node].fbID)
 							break
 						case 'fader':
@@ -589,14 +585,14 @@ class BAirInstance extends InstanceBase {
 							v = v == '' ? this.xStat[node].defaultName : v
 							this.xStat[node].name = v
 							this.setVariableValues({ [this.xStat[node].fbID]: v })
-							if (node.match(/^\/\-snap\//)) {
-								let num = parseInt(node.match(/\d+/)[0])
+							if ('-snap' == top) {
+								let num = parseInt(node.split('/')[2])
 								if (num == this.currentSnapshot) {
-									this.setVariableValues({ 's_name': v })
+									this.setVariableValues({ s_name: v })
 								} else if (num == this.prevSnapshot) {
-									this.setVariableValues({ 's_name_p': v })
+									this.setVariableValues({ s_name_p: v })
 								} else if (num == this.nextSnapshot) {
-									this.setVariableValues({ 's_name_n': v })
+									this.setVariableValues({ s_name_n: v })
 								}
 							}
 							break
@@ -620,45 +616,47 @@ class BAirInstance extends InstanceBase {
 					if (this.needStats) {
 						this.pollStats()
 					}
-					// log('debug',message);
-				} else if (node.match(/^\/xinfo$/)) {
+					// this.log('debug',`${node}: ${JSON.stringify(args)}`);
+				} else if ('xinfo' == top) {
 					this.myMixer.name = args[1].value
 					this.myMixer.model = args[2].value
 					this.myMixer.modelNum = parseInt(args[2].value.match(/\d+/)[0])
 					this.myMixer.fw = args[3].value
 					this.myMixer.ip = args[0].value
 					this.setVariableValues({
-						'm_name': this.myMixer.name,
-						'm_model': this.myMixer.model,
-						'm_modelNum': this.myMixer.modelNum,
-						'm_fw': this.myMixer.fw,
-						'm_ip': this.myMixer.ip,
+						m_name: this.myMixer.name,
+						m_model: this.myMixer.model,
+						m_modelNum: this.myMixer.modelNum,
+						m_fw: this.myMixer.fw,
+						m_ip: this.myMixer.ip,
 					})
-				} else if (node.match(/^\/\-snap\/index$/)) {
+				} else if ('-snap/index$' == node) {
 					const s = parseInt(args[0].value)
 					const n = this.xStat[this.snapshot[s]].name
 					this.currentSnapshot = s
 					this.setVariableValues({
-						's_index': s,
-						's_name': n,
+						s_index: s,
+						s_name: n,
 						['s_name_' + pad0(s)]: n,
 					})
 					this.prevSnapshot = 1 >= s ? 0 : s - 1
 					this.nextSnapshot = 64 <= s ? 0 : s + 1
 					this.setVariableValues({
-						's_name_p': this.xStat[this.snapshot[this.prevSnapshot]]?.name ?? '-----',
-						's_name_n': this.xStat[this.snapshot[this.nextSnapshot]]?.name ?? '-----',
+						s_name_p: this.xStat[this.snapshot[this.prevSnapshot]]?.name ?? '-----',
+						s_name_n: this.xStat[this.snapshot[this.nextSnapshot]]?.name ?? '-----',
 					})
 					this.checkFeedbacks('snap_color')
 					this.sendOSC('/-snap/' + pad0(s) + '/name', [])
-				} else if (node.match(/^\/meters\//)) {
+				} else if ('meters' == top) {
 					// meters here
 					switch (leaf) {
 						case '1':
 							this.parseMeters1(args[0].value)
 							break
 					}
-					this.log('debug', message.address, args)
+					if ('meters' != top) {
+						this.log('debug', message.address, args)
+					}
 				}
 			})
 
