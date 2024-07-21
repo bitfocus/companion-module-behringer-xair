@@ -45,6 +45,7 @@ export function buildMeterDefs(self) {
 		let channelID = ''
 		let feedbackID = ''
 		let muteFeedbackID = ''
+    let meterFBID = ''
 		let variableID = ''
 		let n = ''
 
@@ -103,13 +104,15 @@ export function buildMeterDefs(self) {
 		//feedbackID = feedbackID || `${channelID}`
 		// let muteFeedbackID = `m_${feedbackID}`
 		variableID = `m_${variableID}`
+    meterFBID = `m_${feedbackID}`
 
-		meter1[i] = feedbackID
-		stat[feedbackID] = {
+		meter1[i] = meterFBID
+		stat[meterFBID] = {
 			vName: variableID,
 			valid: false,
 			fbID: feedbackID,
 			muteID: muteFeedbackID,
+      meterID: meterFBID,
 			meter: i,
 			dbVal: 0,
 			total: 0,
@@ -210,6 +213,7 @@ export function buildMeterDefs(self) {
 			let newValue = 0
 
 			if (fbID) {
+        fbID = `m_${fbID}`
 				dbVal = self.mStat[fbID].valid ? self.mStat[fbID].dbVal : -128
 				newValue = (60 + Math.max(dbVal, -60)) *100 / 60
 				// newValue = newValue * 100

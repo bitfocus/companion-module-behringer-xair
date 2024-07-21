@@ -553,22 +553,30 @@ class BAirInstance extends InstanceBase {
 				const top = node.split('/')[1]
 				this.hostResponse = true
 
-				// this.log('debug', `received ${node} ${args} from ${info.address}`)
+				if ('meters' != top) {
+					this.log('debug', `received ${node}:` + JSON.stringify(args) + ` from ${info.address}`)
+				}
 				if (this.xStat[node] !== undefined) {
 					let v = args[0].value
 					switch (leaf) {
 						case 'on':
 						case 'lr':
-							this.xStat[node].isOn = !!v
-							this.checkFeedbacks(this.xStat[node].fbID)
-							break
 						case '1':
 						case '2':
 						case '3':
 						case '4': // '/config/mute/#'
 							this.xStat[node].isOn = !!v
-							this.checkFeedbacks(this.xStat[node].fbID)
+							const fbSubs = this.xStat[node].fbSubs
+							if (fbSubs?.size > 0) {
+								this.checkFeedbacksById(...fbSubs)
+							} else {
+								this.checkFeedbacks(this.xStat[node].fbID)
+							}
 							break
+
+							// this.xStat[node].isOn = !!v
+							// this.checkFeedbacks(this.xStat[node].fbID)
+							// break
 						case 'fader':
 						case 'level':
 							v = Math.floor(v * 10000) / 10000
@@ -630,7 +638,7 @@ class BAirInstance extends InstanceBase {
 						m_fw: this.myMixer.fw,
 						m_ip: this.myMixer.ip,
 					})
-				} else if ('-snap/index$' == node) {
+				} else if ('/-snap/index' == node) {
 					const s = parseInt(args[0].value)
 					const n = this.xStat[this.snapshot[s]].name
 					this.currentSnapshot = s
@@ -740,7 +748,9 @@ class BAirInstance extends InstanceBase {
 			mv.total = total
 			let val = Math.round(total) / 10 // Math.round(total / 256.0 ) / 10
 			mv.dbVal = newVal
-			feedbacks.push(mv.fbID)
+			if (newVal != oldVal) {
+				feedbacks.push(mv.meterID)
+			}
 			// newVal = Math.round((val / 256.0) * 10) / 10
 			// if (['v_ch15','v_ch16'].includes(mv.vName)) {
 			// 	console.log(`${mv.vName} = ${val}`)
@@ -839,6 +849,7 @@ class BAirInstance extends InstanceBase {
 		arg = arg ?? []
 
 		if (this.oscPort) {
+			this.log('debug', `OSC > ${node}:` + JSON.stringify(arg))
 			this.oscPort.send({
 				address: node,
 				args: arg,

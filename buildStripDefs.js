@@ -408,7 +408,7 @@ export function buildStripDefs(self) {
 							},
 						],
 						callback: async (action, context) => {
-							let opt = action.options
+							const opt = action.options
 							const nVal = opt.type == '/ch/' ? pad0(opt.num) : opt.num
 							let strip = opt.type + nVal
 							if (opt.type == '/dca/') {
@@ -497,6 +497,7 @@ export function buildStripDefs(self) {
 				hasOn: theStrip.hasOn,
 				valid: false,
 				fbID: feedbackID,
+        fbSubs: new Set(),
 				polled: 0,
 			}
 			// 'proc' routing toggles
@@ -508,6 +509,7 @@ export function buildStripDefs(self) {
 					hasOn: true,
 					valid: false,
 					fbID: feedbackID,
+          fbSubs: new Set(),
 					polled: 0,
 				}
 				fbToStat[feedbackID] = theID
@@ -600,6 +602,7 @@ export function buildStripDefs(self) {
 					hasOn: theStrip.hasOn,
 					valid: false,
 					fbID: feedbackID,
+					fbSubs: new Set(),
 					polled: 0,
 				}
 				// 'proc' routing toggles
@@ -613,6 +616,7 @@ export function buildStripDefs(self) {
 						hasOn: true,
 						valid: false,
 						fbID: feedbackID,
+						fbSubs: new Set(),
 						polled: 0,
 					}
 				}
@@ -721,7 +725,21 @@ export function buildStripDefs(self) {
 				color: combineRgb(255, 255, 255),
 				bgcolor: combineRgb(128, 0, 0),
 			},
-			callback: (feedback, context) => {
+			subscribe: async (feedback, context) => {
+				const theChannel = feedback.options.theChannel
+				const fbWhich = feedback.feedbackId
+				if (theChannel) {
+					self.xStat[self.fbToStat[fbWhich + '_' + theChannel]].fbSubs.add(feedback.id)
+				}
+			},
+			unsubscribe: async (feedback, context) => {
+				const theChannel = feedback.options.theChannel
+				const fbWhich = feedback.feedbackId
+				if (theChannel) {
+					self.xStat[self.fbToStat[fbWhich + '_' + theChannel]].fbSubs.delete(feedback.id)
+				}
+			},
+			callback: async (feedback, context) => {
 				const theChannel = feedback.options.theChannel
 				const fbWhich = feedback.feedbackId
 				const state = feedback.options.state != '0'
@@ -771,7 +789,7 @@ export function buildStripDefs(self) {
 					color: combineRgb(192, 192, 192),
 					bgcolor: combineRgb(0, 92, 128),
 				},
-				callback: (feedback, context) => {
+				callback: async (feedback, context) => {
 					const theChannel = feedback.options.theChannel
 					const fbWhich = feedback.feedbackId
 					const state = feedback.options.state != '0'
@@ -808,7 +826,7 @@ export function buildStripDefs(self) {
 				name: 'Color of ' + fbDescription,
 				description: 'Use button colors from ' + fbDescription,
 				options: [],
-				callback: (feedback, context) => {
+				callback: async (feedback, context) => {
 					const theChannel = feedback.options.theChannel
 					const fbWhich = feedback.feedbackId
 					let stat
