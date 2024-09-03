@@ -32,22 +32,22 @@ export const UpgradeScripts = [
 	},
 
 	CreateConvertToBooleanFeedbackUpgradeScript({
-		'solo_mute': true,
-		'solo_mono': true,
-		'solo_dim': true,
-		'rtn': true,
-		'lr': true,
-		'fxsend': true,
-		'dca': true,
-		'bus': true,
-		'ch': true,
-		'solosw_aux': true,
-		'solosw_bus': true,
-		'solosw_ch': true,
-		'solosw_dca': true,
-		'solosw_fxr': true,
-		'solosw_fxs': true,
-		'solosw_lr': true,
+		solo_mute: true,
+		solo_mono: true,
+		solo_dim: true,
+		rtn: true,
+		lr: true,
+		fxsend: true,
+		dca: true,
+		bus: true,
+		ch: true,
+		solosw_aux: true,
+		solosw_bus: true,
+		solosw_ch: true,
+		solosw_dca: true,
+		solosw_fxr: true,
+		solosw_fxs: true,
+		solosw_lr: true,
 		'rtn/aux': true,
 		'config/mute': true,
 	}),
@@ -101,6 +101,32 @@ export const UpgradeScripts = [
 		return result
 	},
 	CreateConvertToBooleanFeedbackUpgradeScript({
-		'snap_color': true,
+		snap_color: true,
 	}),
+
+	function (context, props) {
+		const result = {
+			updatedConfig: null,
+			updatedActions: [],
+			updatedFeedbacks: [],
+		}
+
+		for (let fb of props.feedbacks) {
+			let changed = false
+			if (fb.feedbackId == 'rtn/aux') {
+				fb.feedbackId = 'rtn_aux'
+				changed = true
+			}
+			if (fb.feedbackId == 'rtn_aux') {
+				if (fb.options.state == undefined) {
+					fb.options.state = '1'
+					changed = true
+				}
+			}
+			if (changed) {
+				result.updatedFeedbacks.push(fb)
+			}
+		}
+		return result
+	},
 ]

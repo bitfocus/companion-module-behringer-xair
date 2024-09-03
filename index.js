@@ -728,7 +728,6 @@ class BAirInstance extends InstanceBase {
 		// if (this.lastMeter && Date.now() - this.lastMeter < 50) {
 		// 	return
 		// }
-
 		let data = new DataView(buf.slice(4).buffer)
 
 		let variables = {}
@@ -748,19 +747,19 @@ class BAirInstance extends InstanceBase {
 			mv.total = total
 			let val = Math.round(total) / 10 // Math.round(total / 256.0 ) / 10
 			mv.dbVal = newVal
-			if (newVal != oldVal) {
-				feedbacks.push(mv.meterID)
+			if (mv.fbSubs.size > 0 && newVal != oldVal) {
+				feedbacks.push(...mv.fbSubs)
 			}
 			// newVal = Math.round((val / 256.0) * 10) / 10
 			// if (['v_ch15','v_ch16'].includes(mv.vName)) {
-			// 	console.log(`${mv.vName} = ${val}`)
+			// console.log(`${mv.vName} = ${val}`)
 			// }
 			if (this.lastMeter && Date.now() - this.lastMeter > 50) {
 				variables[mv.vName] = Math.max(val, -60.0)
 			}
 		}
 		this.setVariableValues(variables)
-		this.checkFeedbacks(feedbacks)
+		this.checkFeedbacksById(feedbacks)
 		this.lastMeter = Date.now()
 	}
 
