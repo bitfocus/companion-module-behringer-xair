@@ -3,6 +3,28 @@ import { pad0, unSlash } from './helpers.js'
 import { graphics } from 'companion-module-utils'
 
 export function buildMeterDefs(self) {
+	function getFbId(fb) {
+		const type = fb.options.type
+		let fbID = type
+		switch (type) {
+			case 'ch':
+				fbID += '_' + fb.options.num1
+				break
+			case 'rtn':
+			case 'fx':
+				fbID += fb.options.num2
+				break
+			case 'bus':
+				fbID += fb.options.num3
+				break
+		}
+
+		if (['aux', 'rtn', 'lr', 'mon'].includes(type)) {
+			fbID += `_${fb.options.pan}`
+		}
+		return fbID ? `m_${fbID}` : undefined
+	}
+
 	let stat = {}
 	let fbToMeter = {}
 	let feedbacks = {}
@@ -45,7 +67,7 @@ export function buildMeterDefs(self) {
 		let channelID = ''
 		let feedbackID = ''
 		let muteFeedbackID = ''
-    let meterFBID = ''
+		let meterFBID = ''
 		let variableID = ''
 		let n = ''
 
@@ -68,30 +90,10 @@ export function buildMeterDefs(self) {
 					feedbackID =
 					muteFeedbackID =
 					variableID =
-						[
-							'bus1',
-							'bus2',
-							'bus3',
-							'bus4',
-							'bus5',
-							'bus6',
-							'fxsend1',
-							'fxsend2',
-							'fxsend3',
-							'fxsend4',
-						][i - 26]
-				n = [
-					'Bus 1',
-					'Bus 2',
-					'Bus 3',
-					'Bus 4',
-					'Bus 5',
-					'Bus 6',
-					'FX Send 1',
-					'FX Send 2',
-					'FX Send 3',
-					'FX Send 4',
-				][i - 26]
+						['bus1', 'bus2', 'bus3', 'bus4', 'bus5', 'bus6', 'fxsend1', 'fxsend2', 'fxsend3', 'fxsend4'][i - 26]
+				n = ['Bus 1', 'Bus 2', 'Bus 3', 'Bus 4', 'Bus 5', 'Bus 6', 'FX Send 1', 'FX Send 2', 'FX Send 3', 'FX Send 4'][
+					i - 26
+				]
 			} else {
 				let m = parseInt((i - 36) / 2)
 				channelID = feedbackID = muteFeedbackID = ['lr', 'mon'][m]
@@ -104,7 +106,7 @@ export function buildMeterDefs(self) {
 		//feedbackID = feedbackID || `${channelID}`
 		// let muteFeedbackID = `m_${feedbackID}`
 		variableID = `m_${variableID}`
-    meterFBID = `m_${feedbackID}`
+		meterFBID = `m_${feedbackID}`
 
 		meter1[i] = meterFBID
 		stat[meterFBID] = {
@@ -112,7 +114,8 @@ export function buildMeterDefs(self) {
 			valid: false,
 			fbID: feedbackID,
 			muteID: muteFeedbackID,
-      meterID: meterFBID,
+			meterID: meterFBID,
+			fbSubs: new Set(),
 			meter: i,
 			dbVal: 0,
 			total: 0,
@@ -185,37 +188,31 @@ export function buildMeterDefs(self) {
 				choices: self.BAR_LOCATION,
 			},
 		],
+		subscribe: async (feedback, context) => {
+			let fbID = getFbId(feedback)
+			if (fbID) {
+				self.mStat[fbID].fbSubs.add(feedback.id)
+			}
+		},
+		unsubscribe: async (feedback, context) => {
+			let fbID = getFbId(feedback)
+			if (fbID) {
+				self.mStat[fbID].fbSubs.delete(feedback.id)
+			}
+		},
 		callback: async (feedback) => {
+			let fbID = getFbId(feedback)
 			const loc = feedback.options.loc
-			const type = feedback.options.type
+
 			const top = loc == 'b' ? feedback.image.height - 6 : 3
 			const left = loc == 'r' ? feedback.image.width - 6 : 3
 			let dbVal = -1
-			let fbID = type
-			switch (type) {
-				case 'ch':
-					fbID += '_' + feedback.options.num1
-					break
-				case 'rtn':
-				case 'fx':
-					fbID += feedback.options.num2
-					break
-				case 'bus':
-					fbID += feedback.options.num3
-					break
-			}
-
-			if (['aux', 'rtn', 'lr', 'mon'].includes(type)) {
-				fbID += `_${feedback.options.pan}`
-			}
-
 			let muteID = ''
 			let newValue = 0
 
 			if (fbID) {
-        fbID = `m_${fbID}`
 				dbVal = self.mStat[fbID].valid ? self.mStat[fbID].dbVal : -128
-				newValue = (60 + Math.max(dbVal, -60)) *100 / 60
+				newValue = ((60 + Math.max(dbVal, -60)) * 100) / 60
 				// newValue = newValue * 100
 				// newValue = newValue / 60
 				// newValue = 100 + newValue

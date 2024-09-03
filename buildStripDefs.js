@@ -705,7 +705,8 @@ export function buildStripDefs(self) {
 
 		// mute feedback defs
 		let fbDescription = theStrip.description + ' ' + (theStrip.hasOn ? 'Mute' : '') + ' status'
-		muteFeedbacks[stripID] = {
+    feedbackID = unSlash(stripID)
+		muteFeedbacks[feedbackID] = {
 			type: 'boolean',
 			name: 'Indicate ' + fbDescription,
 			description: 'Indicate ' + fbDescription + ' on button',
@@ -754,7 +755,7 @@ export function buildStripDefs(self) {
 			},
 		}
 		if (d > 0) {
-			muteFeedbacks[stripID].options.push({
+			muteFeedbacks[feedbackID].options.push({
 				type: 'number',
 				label: theStrip.description + ' number',
 				id: 'theChannel',

@@ -20,7 +20,7 @@ export function buildHADefs(self) {
 			name: 'Head Amp ' + c ,
 			variableId: fID,
 		})
-		self.snapshot[s] = theID
+
 	}
-	self.variableDefs.push(...snapVars)
+	self.variableDefs.push(...haVariables)
 }

@@ -7,7 +7,7 @@ export function buildConstants(self) {
 	for (let i = 0; i < 1024; i++) {
 		self.fLevels[1024][i] = Math.min(
 			1.0,
-			Math.floor((Math.round(self.stepsToFader(i, 1024) * 1023.5) / 1023) * 10000) / 10000,
+			Math.floor((Math.round(self.stepsToFader(i, 1024) * 1023.5) / 1023) * 10000) / 10000
 		)
 	}
 
@@ -105,4 +105,88 @@ export function buildConstants(self) {
 		{ id: 'l', label: 'Left' },
 		{ id: 'r', label: 'Right' },
 	]
+
+	self.MIXER_MODEL = {
+		XR12: { desc: 'XAir 12 Rack', channels: 12 },
+		XR16: { desc: 'XAir 16 Rack', channels: 16 },
+		XR18: { desc: 'XAir 18 Rack', channels: 18 },
+		X18: { desc: 'XAir 18 Desk', channels: 18 },
+	}
+
+	self.HA_CONFIG = [
+		{
+			12: { name: '', has: false },
+			16: { name: '', has: false },
+			18: { name: '', has: false },
+		},
+	]
+
+	for (let c = 1; c < 25; c++) {
+		switch (c) {
+			case 1:
+			case 2:
+			case 3:
+			case 4:
+				self.HA_CONFIG[c] = {
+					12: { name: `XLR ${c}`, has: true },
+					16: { name: `XLR ${c}`, has: true },
+					18: { name: `XLR ${c}`, has: true },
+					trim: 145,
+					ph: true,
+				}
+				break
+			case 5:
+			case 6:
+			case 7:
+			case 8:
+				self.HA_CONFIG[c] = {
+					12: { name: '', has: false },
+					16: { name: `XLR ${c}`, has: true },
+					18: { name: `XLR ${c}`, has: true },
+					trim: 145,
+					ph: true,
+				}
+				break
+			case 9:
+			case 10:
+			case 11:
+			case 12:
+			case 13:
+			case 14:
+			case 15:
+			case 16:
+				self.HA_CONFIG[c] = {
+					12: { name: '', has: false },
+					16: { name: '', has: false },
+					18: { name: `XLR ${c}`, has: true },
+					trim: 145,
+					ph: true,
+				}
+				break
+			case 17:
+				self.HA_CONFIG[c] = {
+					12: { name: `1/4 ${c - 16}`, has: true },
+					16: { name: `1/4 ${c - 16}`, has: true },
+					18: { name: 'RCA', has: true },
+					trim: 65,
+					ph: false,
+				}
+				break
+			case 18:
+			case 19:
+			case 20:
+			case 21:
+			case 22:
+			case 23:
+			case 24:
+				self.HA_CONFIG[c] = {
+					12: { name: `1/4 ${c - 16}`, has: true },
+					16: { name: `1/4 ${c - 16}`, has: true },
+					18: { name: '', has: false },
+					trim: 65,
+					ph: false,
+				}
+				break
+		}
+	}
 }
