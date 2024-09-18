@@ -89,6 +89,24 @@ export function buildConstants(self) {
 		{ label: 'White Inverted', id: '15', bg: 0, fg: combineRgb(224, 224, 224) },
 	]
 
+	self.MONITOR_SOURCES = [
+		{ id: 0, label: 'Off' },
+		{ id: 1, label: 'LR' },
+		{ id: 2, label: 'LR (PFL)' },
+		{ id: 3, label: 'LR (AFL)' },
+		{ id: 4, label: 'AUX' },
+		{ id: 5, label: 'USB 17/18' },
+		{ id: 6, label: 'Bus 1' },
+		{ id: 7, label: 'Bus 2' },
+		{ id: 8, label: 'Bus 3' },
+		{ id: 9, label: 'Bus 4' },
+		{ id: 10, label: 'Bus 5' },
+		{ id: 11, label: 'Bus 6' },
+		{ id: 12, label: 'Bus 1/2' },
+		{ id: 13, label: 'Bus 3/4' },
+		{ id: 14, label: 'Bus 5/6' },
+	]
+
 	self.TAPE_FUNCTIONS = [
 		{ label: 'STOP', id: '0' },
 		{ label: 'PLAY PAUSE', id: '1' },
@@ -112,6 +130,14 @@ export function buildConstants(self) {
 		XR18: { desc: 'XAir 18 Rack', channels: 18 },
 		X18: { desc: 'XAir 18 Desk', channels: 18 },
 	}
+
+	self.MIXER_CHOICES = []
+	Object.entries(self.MIXER_MODEL).forEach(([key, val]) => {
+		self.MIXER_CHOICES.push({
+			id: key,
+			label: val.desc,
+		})
+	})
 
 	self.HA_CONFIG = [
 		{

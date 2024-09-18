@@ -9,6 +9,7 @@ import { buildSoloDefs } from './buildSoloDefs.js'
 import { buildStaticActions } from './actions.js'
 import { buildSnapshotDefs } from './buildSnapshotDefs.js'
 import { buildMeterDefs } from './buildMeterDefs.js'
+import { buildHADefs } from './buildHADefs.js'
 import { getConfigFields } from './config.js'
 import { ICON_SOLO } from './icons.js'
 import { pad0 } from './helpers.js'
@@ -51,7 +52,8 @@ class BAirInstance extends InstanceBase {
 		this.myMixer = {
 			name: '',
 			model: '',
-			modelNum: 0,
+			channels: 0,
+			ip: '',
 			fwVersion: '',
 		}
 
@@ -79,6 +81,7 @@ class BAirInstance extends InstanceBase {
 		buildStaticActions(this)
 		buildSnapshotDefs(this)
 		buildMeterDefs(this)
+		buildHADefs(this)
 
 		//buildHeadampDefs(this)
 		this.setActionDefinitions(this.actionDefs)
@@ -106,6 +109,8 @@ class BAirInstance extends InstanceBase {
 				for (let m in this.unitsFound) {
 					if (this.unitsFound[m].m_ip == config.host) {
 						config.mixer = m
+						config.model = this.unitsFound[m].m_model
+						config.channels = this.unitsFound[m].m_channels
 					}
 				}
 				this.saveConfig(config)
@@ -234,13 +239,15 @@ class BAirInstance extends InstanceBase {
 					m_name: args[1].value,
 					m_model: args[2].value,
 					m_fwver: args[3].value,
-					m_modelNum: parseInt(args[2].value.match(/\d+/)[0]),
+					m_channels: parseInt(args[2].value.match(/\d+/)[0]),
 					m_last: Date.now(),
 				}
 				this.unitsFound[newUnit.m_name] = newUnit
 				if (!this.config.mixer || this.config.mixer == '') {
 					if (newUnit.m_ip == this.config.host) {
 						this.config.mixer = newUnit.m_name
+						this.config.model = newUnit.m_model
+						this.config.channels = newUnit.m_channels
 						this.saveConfig(this.config)
 					}
 				}
@@ -574,9 +581,9 @@ class BAirInstance extends InstanceBase {
 							}
 							break
 
-							// this.xStat[node].isOn = !!v
-							// this.checkFeedbacks(this.xStat[node].fbID)
-							// break
+						// this.xStat[node].isOn = !!v
+						// this.checkFeedbacks(this.xStat[node].fbID)
+						// break
 						case 'fader':
 						case 'level':
 							v = Math.floor(v * 10000) / 10000
@@ -587,6 +594,38 @@ class BAirInstance extends InstanceBase {
 								[this.xStat[node].varID + '_rp']: Math.round(this.faderToDB(v, 1024, true)),
 							})
 							this.xStat[node].idx = this.fLevels[this.xStat[node].fSteps].findIndex((i) => i >= v)
+							break
+						case 'gain': // headamp
+							let ha = parseInt(node.split('/')[2])
+							this.xStat[node].gain = v
+							this.setVariableValues({
+								[this.xStat[node].varID + '_p']: Math.round(v * 100),
+								[this.xStat[node].varID + '_d']: this.faderToDB(
+									v,
+									this.HA_CONFIG[ha][this.myMixer.channels].trim,
+									false
+								),
+							})
+							break
+						case 'phantom':
+							this.xStat[node].pp = !!v
+							this.setVariableValues({
+								[this.xStat[node].varID]: !!v,
+							})
+							break
+						case 'source':
+							this.xStat[node].m_source = v
+							this.setVariableValues({
+								[this.xStat[node].varID]: this.MONITOR_SOURCES[v].label,
+							})
+							this.checkFeedbacks(this.xStat[node].fbID)
+							break
+						case 'chmode':
+						case 'busmode':
+							this.xStat[node].value = !!v ? 'AFL' : 'PFL'
+							this.setVariableValues({
+								[this.xStat[node].varID]: this.xStat[node].value,
+							})
 							break
 						case 'name':
 							// no name, use behringer default
@@ -608,12 +647,15 @@ class BAirInstance extends InstanceBase {
 							this.xStat[node].color = v
 							this.checkFeedbacks(this.xStat[node].fbID)
 							break
+						case 'dimpfl':
 						case 'mono':
 						case 'dim':
 						case 'mute': // '/config/solo/'
-							this.xStat[node].isOn = v
+							this.xStat[node].isOn = !!v
 							this.checkFeedbacks(this.xStat[node].fbID)
+							this.setVariableValues({ [this.xStat[node].varID]: v ? true : false })
 							break
+
 						default:
 							if (node.match(/\/solo/)) {
 								this.xStat[node].isOn = v
@@ -628,13 +670,13 @@ class BAirInstance extends InstanceBase {
 				} else if ('xinfo' == top) {
 					this.myMixer.name = args[1].value
 					this.myMixer.model = args[2].value
-					this.myMixer.modelNum = parseInt(args[2].value.match(/\d+/)[0])
+					this.myMixer.channels = parseInt(args[2].value.match(/\d+/)[0])
 					this.myMixer.fw = args[3].value
 					this.myMixer.ip = args[0].value
 					this.setVariableValues({
 						m_name: this.myMixer.name,
 						m_model: this.myMixer.model,
-						m_modelNum: this.myMixer.modelNum,
+						m_channels: this.myMixer.channels,
 						m_fw: this.myMixer.fw,
 						m_ip: this.myMixer.ip,
 					})
@@ -783,6 +825,10 @@ class BAirInstance extends InstanceBase {
 				variableId: 'm_ip',
 			},
 			{
+				name: 'XAir Mixer Channels',
+				variableId: 'm_channels',
+			},
+			{
 				name: 'Current Snapshot Name',
 				variableId: 's_name',
 			},
@@ -827,13 +873,17 @@ class BAirInstance extends InstanceBase {
 				},
 
 				callback: async (feedback, context) => {
-					const snap = parseInt(await context.parseVariablesInString(feedback.options.theSnap))
-					if (snap < 1 || snap > 64) {
-						const err = [feedback.controlId, feedback.feedbackId, 'Invalid Snapshot #'].join(' → ')
-						this.updateStatus(InstanceStatus.BadConfig, err)
-						this.paramError = true
-					} else {
-						return snap == this.currentSnapshot
+					try {
+						const snap = parseInt(await context.parseVariablesInString(feedback.options.theSnap))
+
+						if (snap < 1 || snap > 64) {
+							const err = [feedback.controlId, feedback.feedbackId, 'Invalid Snapshot #'].join(' → ')
+							this.updateStatus(InstanceStatus.BadConfig, err)
+							this.paramError = true
+						} else {
+							return snap == this.currentSnapshot
+						}
+					} finally {
 					}
 				},
 			},

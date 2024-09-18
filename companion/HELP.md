@@ -39,6 +39,10 @@ Contributions for development and maintenance of this open source module are alw
 | Channel, USB, FX Send, Fx Return, Bus and Main Solo         | Solos the selected Channel, USB, FX Send, Fx Return, Bus and Main                                                  |
 | Clear Solo                                                  | Clears all active solos                                                                                            |
 | Solo Level Set                                              | Sets the level of the Solo (monitor) output                                                                        |
+| Set Monitor Source                                          | Sets the Source of the Monitor output                                                                              |
+| Channel Solo Mode                                           | Set solo mode for Channels (AFL/PFL)                                                                               |
+| Channel Solo Mode                                           | Set solo mode for Channels (AFL/PFL)                                                                               |
+| PFL Dim                                                     | Enable/Disable PFL Dim/Attenuation                                                                                 |
 | Solo Level Adjust                                           | Adjust the Solo level up or down by steps **see notes*                                                             |
 | Solo Dim                                                    | Dims the Solo output level to the value configured in the console.                                                 |
 | Solo Mute                                                   | Mutes the Solo output                                                                                              |
@@ -100,6 +104,11 @@ Contributions for development and maintenance of this open source module are alw
 | **$(INSTANCENAME:f_fxsend#_d)**  | FX Bus Master # Fader dB                        |
 | **$(INSTANCENAME:f_fxsend#_p)**  | FX Bus Master # Fader Percent                   |
 | **$(INSTANCENAME:f_fxsend#_rp)** | FX Bus Master # Fader Relative Loudness Percent |
+| **$(INSTANCENAME:m_source)**     | Current Monitor Output Source                   |
+| **$(INSTANCENAME:m_chmode)**     | Channel Solo Mode (AFL/PFL)                     |
+| **$(INSTANCENAME:m_busmode)**    | Bus Solo Mode (AFL/PFL)                         |
+| **$(INSTANCENAME:m_dimpfl)**     | Solo PFL Attenuation Enabled (true/false)       |
+| **$(INSTANCENAME:m_dim)**        | Solo Dim Enabled (true/false)                   |
 | **$(INSTANCENAME:f_solo_d)**     | Solo (monitor) output level dB                  |
 | **$(INSTANCENAME:f_solo_p)**     | Solo (monitor) output level Percent             |
 | **$(INSTANCENAME:f_fxsend#_rp)** | FX Bus Master # Fader Relative Loudness Percent |
@@ -142,11 +151,13 @@ Contributions for development and maintenance of this open source module are alw
 | **Indicate Main LR Solo** *       | Changes the button when Main LR Solo on                                                      |
 | **Indicate USB/Aux Solo** *       | Changes the button when USB/Aux Solo on                                                      |
 | **Indicate processing status** *  | Changes the button according to the selected channel/process status                          |
+| **Indicate Monitor Source** *     | Changes the button when Monitor Source is set to selected option                   |
 | **Color when Solo Mute** *        | Sets the button color when the Solo output is muted                                          |
 | **Color when Solo Mono** *        | Sets the button color when the Solo output is mono                                           |
+| **Color when Solo Dim PFL** *     | Sets the button color when the Solo PFL is dimmed                                            |
 | **Color when Solo Dim** *         | Sets the button color when the Solo output is dimmed                                         |
 | **Color when Any Solo Active**    | Sets the button color when 'Clr Solo' is active                                              |
-| **Meter Bar**                 | Adds a graphic meter bar for the selected channel/bus to the button                                                           |
+| **Meter Bar**                     | Adds a graphic meter bar for the selected channel/bus to the button                          |
 
 ## Notes
 

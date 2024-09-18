@@ -66,10 +66,32 @@ export const defSolo = [
 				fadeType: 161,
 			},
 			{
+				actID: 'source',
+				description: 'Solo Bus Source',
+				isFader: false,
+				bg: [100, 75, 50],
+			},
+			{
 				actID: 'sourcetrim',
 				description: 'Source Trim',
 				isFader: true,
 				fadeType: 73,
+			},
+			{
+				actID: 'chmode',
+				description: 'Channel Solo',
+				isFader: false,
+			},
+			{
+				actID: 'busmode',
+				description: 'Bus Solo',
+				isFader: false,
+			},
+			{
+				actID: 'dimpfl',
+				description: 'PFL Attenuation',
+				isFader: false,
+				bg: [0, 150, 200],
 			},
 			{
 				actID: 'dimatt',
