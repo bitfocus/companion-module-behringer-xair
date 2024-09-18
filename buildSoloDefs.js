@@ -22,6 +22,7 @@ export function buildSoloDefs(self) {
 	for (const cmd of defSolo) {
 		const pfx = cmd.prefix
 		const cMap = cmd.cmdMap
+		let fbDescription
 		switch (cmd.id) {
 			case 'solosw':
 				for (const cm in cmd.cmdMap) {
@@ -148,6 +149,7 @@ export function buildSoloDefs(self) {
 						varID: soloID,
 						valid: false,
 						polled: 0,
+						fbSubs: new Set(),
 					}
 					soloFbToStat[actID] = c
 					if (ch.isFader) {
@@ -215,56 +217,152 @@ export function buildSoloDefs(self) {
 							variableId: soloID + '_rp',
 						})
 					} else {
-						soloActions[actID] = {
-							name: 'Solo ' + ch.description,
-							options: [],
-							callback: async (action, context) => {
-								let strip = `${c}`
-								let arg = { type: 'i', value: setToggle(self.xStat[strip].isOn, action.options.set) }
-								await self.sendOSC(strip, arg)
-							},
-						}
-						soloActions[actID].options.push({
-							type: 'dropdown',
-							label: 'Value',
-							id: 'set',
-							default: '2',
-							choices: [
-								{ id: '1', label: 'On' },
-								{ id: '0', label: 'Off' },
-								{ id: '2', label: 'Toggle' },
-							],
-						})
-						soloActions[actID]
-						stat[c].isOn = false
-						let fbDescription = 'Solo ' + ch.description + ' status'
-						soloFeedbacks[actID] = {
-							type: 'boolean',
-							name: 'Indicate ' + fbDescription,
-							description: 'Indicate ' + fbDescription + ' on button',
-							options: [
-								{
+						switch (ch.actID) {
+							case 'source':
+								soloActions[actID] = {
+									name: 'Monitor Source',
+									options: [
+										{
+											type: 'dropdown',
+											label: 'Source',
+											id: 'source',
+											default: 0,
+											choices: self.MONITOR_SOURCES,
+										},
+									],
+									callback: async (action, context) => {
+										let arg = { type: 'i', value: action.options.source }
+										await self.sendOSC(c, arg)
+									},
+								}
+								stat[c].varID = 'm_source'
+								soloVariables.push({
+									name: 'Monitor Source',
+									variableId: 'm_source',
+								})
+								fbDescription = 'Monitor Source'
+								soloFeedbacks[actID] = {
+									type: 'boolean',
+									name: fbDescription,
+									description: 'Indicate ' + fbDescription + ' is on button',
+									options: [
+										{
+											type: 'dropdown',
+											label: 'Source',
+											id: 'source',
+											default: 0,
+											choices: self.MONITOR_SOURCES,
+										},
+									],
+									defaultStyle: {
+										color: combineRgb(255, 255, 255),
+										bgcolor: combineRgb.apply(this, ch.bg),
+									},
+									// subscribe: async (feedback, context) => {
+									// 	const fbID = feedback.feedbackId
+									// 	if (fbID) {
+									// 		self.xStat[self.fbToStat[fbID]].fbSubs.add(feedback.id)
+									// 	}
+									// },
+									// unsubscribe: async (feedback, context) => {
+									// 	const fbID = feedback.feedbackId
+									// 	if (fbID) {
+									// 		self.xStat[self.fbToStat[fbID]].fbSubs.delete(feedback.id)
+									// 	}
+									// },
+									callback: function (feedback, context) {
+										var fbWhich = feedback.feedbackId
+										var stat = self.xStat[self.fbToStat[fbWhich]]
+										var source = feedback.options.source
+
+										return stat.m_source == source
+									},
+								}
+								break
+							case 'chmode':
+							case 'busmode':
+								soloActions[actID] = {
+									name: ch.description,
+									options: [
+										{
+											type: 'dropdown',
+											label: 'Value',
+											id: 'set',
+											default: '1',
+											choices: [
+												{ id: '1', label: 'AFL' },
+												{ id: '0', label: 'PFL' },
+											],
+										},
+									],
+									callback: async (action, context) => {
+										let arg = { type: 'i', value: parseInt(action.options.set) }
+										await self.sendOSC(c, arg)
+									},
+								}
+								stat[c].varID = 'm_' + ch.actID
+								soloVariables.push({
+									name: ch.description,
+									variableId: stat[c].varID,
+								})
+								break
+							default:
+								soloActions[actID] = {
+									name: 'Solo ' + ch.description,
+									options: [],
+									callback: async (action, context) => {
+										let strip = `${c}`
+										let arg = { type: 'i', value: setToggle(self.xStat[strip].isOn, action.options.set) }
+										await self.sendOSC(c, arg)
+									},
+								}
+								soloActions[actID].options.push({
 									type: 'dropdown',
-									label: 'State',
-									id: 'state',
-									default: '1',
+									label: 'Value',
+									id: 'set',
+									default: '2',
 									choices: [
 										{ id: '1', label: 'On' },
 										{ id: '0', label: 'Off' },
+										{ id: '2', label: 'Toggle' },
 									],
-								},
-							],
-							defaultStyle: {
-								color: combineRgb(255, 255, 255),
-								bgcolor: combineRgb.apply(this, ch.bg),
-							},
-							callback: function (feedback, context) {
-								var fbWhich = feedback.feedbackId
-								var stat = self.xStat[self.fbToStat[fbWhich]]
-								var state = feedback.options.state != '0'
+								})
+								stat[c].isOn = false
+								fbDescription = 'Solo ' + ch.description + ' status'
+								soloFeedbacks[actID] = {
+									type: 'boolean',
+									name: 'Indicate ' + fbDescription,
+									description: 'Indicate ' + fbDescription + ' on button',
+									options: [
+										{
+											type: 'dropdown',
+											label: 'State',
+											id: 'state',
+											default: '1',
+											choices: [
+												{ id: '1', label: 'On' },
+												{ id: '0', label: 'Off' },
+											],
+										},
+									],
+									defaultStyle: {
+										color: combineRgb(255, 255, 255),
+										bgcolor: combineRgb.apply(this, ch.bg),
+									},
+									callback: function (feedback, context) {
+										var fbWhich = feedback.feedbackId
+										var stat = self.xStat[self.fbToStat[fbWhich]]
+										var state = feedback.options.state != '0'
 
-								return stat.isOn == state
-							},
+										return stat.isOn == state
+									},
+								}
+								stat[c].varID = 's_' + ch.actID
+								soloVariables.push({
+									name: ch.description,
+									variableId: stat[c].varID,
+								})
+								break
 						}
 					}
 				}
