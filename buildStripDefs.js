@@ -790,6 +790,20 @@ export function buildStripDefs(self) {
 					color: combineRgb(192, 192, 192),
 					bgcolor: combineRgb(0, 92, 128),
 				},
+				subscribe: async (feedback, context) => {
+					const theChannel = feedback.options.theChannel
+					const fbWhich = feedback.feedbackId
+					if (theChannel) {
+						self.xStat[self.fbToStat[fbWhich  + theChannel]].fbSubs.add(feedback.id)
+					}
+				},
+				unsubscribe: async (feedback, context) => {
+					const theChannel = feedback.options.theChannel
+					const fbWhich = feedback.feedbackId
+					if (theChannel) {
+						self.xStat[self.fbToStat[fbWhich  + theChannel]].fbSubs.delete(feedback.id)
+					}
+				},
 				callback: async (feedback, context) => {
 					const theChannel = feedback.options.theChannel
 					const fbWhich = feedback.feedbackId
