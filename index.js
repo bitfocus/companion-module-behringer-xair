@@ -43,6 +43,11 @@ class BAirInstance extends InstanceBase {
 
 	async init(config) {
 		this.config = config
+
+		if (!this.config.channels) {
+			this.config.channels = parseInt(this.config.model.replace(/\D/g, ''))
+			this.saveConfig(this.config)
+		}
 		this.snapshot = []
 
 		this.currentSnapshot = 0
