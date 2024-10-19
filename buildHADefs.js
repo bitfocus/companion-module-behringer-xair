@@ -22,9 +22,6 @@ export function buildHADefs(self) {
 		if (self.HA_CONFIG[s][mc].has) {
 			let haName = self.HA_CONFIG[s][mc].name + 'Gain'
 
-
-
-
 			haVariables.push({
 				name: haName + ' %',
 				variableId: vID + '_p',
