@@ -1,6 +1,6 @@
 'use strict'
 import { defStrip } from './defStrip.js'
-import { combineRgb, InstanceStatus } from '@companion-module/base'
+import { combineRgb, InstanceStatus, Regex } from '@companion-module/base'
 import { pad0, unSlash, setToggle, fadeTo } from './helpers.js'
 
 // build the channel strip actions/feedbaks/variables
@@ -10,6 +10,7 @@ export function buildStripDefs(self) {
 	let muteActions = {}
 	let procActions = {}
 	let trimActions = {}
+	let panActions = {}
 	// let fadeActions = {}
 	// let storeActions = {}
 	let levelActions = {}
@@ -60,8 +61,8 @@ export function buildStripDefs(self) {
 
 	function makeLevelActions(id, aLabel, aId, theStrip) {
 		for (let sfx of self.levelOpts) {
-			const newName = aLabel + ` Level ${sfx.act}`
-			const newLabel = 'send' != id ? aLabel : sendLabel(theStrip.description, theStrip.min, theStrip.max)
+			const newName = aLabel + ' Level ' + sfx.act
+			const newLabel = !['send'].includes(id) ? aLabel : sendLabel(theStrip.description, theStrip.min, theStrip.max)
 			const newId = id + sfx.op
 			if (levelActions[newId] !== undefined) {
 				// add strip option to action
@@ -255,6 +256,258 @@ export function buildStripDefs(self) {
 					}
 				}
 			}
+		}
+	}
+
+	function makePanActions(aId, theStrip, send = false) {
+		for (let sfx of self.levelOpts) {
+			const newName = (send ? 'Send' : theStrip.description) + ` Pan ${sfx.act}`
+			const newLabel = !send ? theStrip.Description : sendLabel(theStrip.description, theStrip.min, theStrip.max)
+			const newId = (send ? 's_' : '') + theStrip.panID + sfx.op
+			if (panActions[newId] !== undefined) {
+				// add strip option to action
+				panActions[newId].options[0].choices.push({
+					id: aId,
+					label: newLabel,
+				})
+				panActions[newId].options[1].label += ', ' + theStrip.description
+			} else {
+				// new action
+				panActions[newId] = {
+					name: newName,
+					options: [], // default empty
+				}
+				if (theStrip.digits > 0) {
+					panActions[newId].options = [
+						{
+							type: 'dropdown',
+							label: 'Type',
+							id: 'type',
+							choices: [
+								{
+									id: aId,
+									label: newLabel,
+								},
+							],
+							default: aId,
+						},
+						{
+							type: 'number',
+							label: theStrip.description,
+							id: 'num',
+							default: 1,
+							min: theStrip.min,
+							max: theStrip.max,
+							range: false,
+							required: true,
+						},
+					]
+					panActions[newId].callback = async (action, context) => {
+						const opt = action.options
+						const aId = action.actionId
+						const nVal = opt.type == '/ch/' ? pad0(opt.num) : opt.num
+						const strip = opt.type + nVal + '/mix/pan'
+						try {
+							let fVal = await fadeTo(aId, strip, opt, self)
+
+							if ('_s' != aId.slice(-2)) {
+								// store is local, no console command
+								self.sendOSC(strip, { type: 'f', value: fVal })
+							}
+						} catch (error) {
+							const err = [action.controlId, error.message].join(' → ')
+							self.updateStatus(InstanceStatus.BadConfig, err)
+							self.paramError = true
+						}
+					}
+				} else {
+					// Main LR
+					const strip = (theStrip.panID == 'mPan' ? '/lr' : '/rtn/aux') + '/mix/pan'
+					panActions[newId].callback = async (action, context) => {
+						const opt = action.options
+						const aId = action.actionId
+            if ('_' != aId.slice(-2,1)) { // direct set
+              opt.pan = (opt.pan / 2 + 50) / 100
+            }
+						try {
+							let fVal = await fadeTo(aId, strip, opt, self)
+							self.updateStatus(InstanceStatus.Ok)
+							self.paramError = false
+
+							if ('_s' != aId.slice(-2)) {
+								// store is local, no console command
+								self.sendOSC(strip, { type: 'f', value: fVal })
+							}
+						} catch (error) {
+							const err = [action.controlId, error.message].join(' → ')
+							self.updateStatus(InstanceStatus.BadConfig, err)
+							self.paramError = true
+						}
+					}
+				}
+				if (theStrip.hasLevel && send) {
+					// bus sends
+					panActions[newId].options.push({
+						type: 'dropdown',
+						label: 'Bus',
+						id: 'busNum',
+						choices: [
+							{ id: 1, label: '1-2' },
+							{ id: 3, label: '3-4' },
+							{ id: 5, label: '5-6' },
+						],
+						default: 1,
+					})
+					panActions[newId].callback = async (action, context) => {
+						const opt = action.options
+						const aId = action.actionId
+						let nVal = ''
+						if (opt.type == '/ch/') {
+							nVal = pad0(opt.num) + '/'
+						} else if (opt.type == '/rtn/') {
+							nVal = parseInt(opt.num) + '/'
+						}
+						const bVal = pad0(opt.busNum)
+						const strip = opt.type + nVal + 'mix/' + bVal + '/pan'
+						try {
+							let fVal = await fadeTo(aId, strip, opt, self)
+
+							if ('_s' != aId.slice(-2)) {
+								// store is local, no console command
+								self.sendOSC(strip, { type: 'f', value: fVal })
+							}
+						} catch (error) {
+							const err = [action.controlId, error.message].join(' → ')
+							self.updateStatus(InstanceStatus.BadConfig, err)
+							self.paramError = true
+						}
+					}
+				}
+				switch (sfx.op) {
+					case '':
+						panActions[newId].options.push({
+							type: 'number',
+							label: 'Balance (-100 to 100)',
+							id: 'pan',
+							default: '0',
+							min: -100,
+							max: 100,
+							regex: Regex.INTEGER,
+						})
+						break
+					case '_a':
+						panActions[newId].options.push({
+							type: 'textinput',
+							useVariables: true,
+							tooltip: 'Move +/-',
+							label: 'Adjust By',
+							id: 'ticks',
+							default: '1',
+						})
+						break
+					case '_s':
+						panActions[newId].options.push({
+							type: 'dropdown',
+							tooltip: 'Store pan value for later recall',
+							label: 'Where',
+							id: 'store',
+							default: 'me',
+							choices: [
+								{
+									id: 'me',
+									label: 'Channel',
+								},
+								...self.STORE_LOCATION,
+							],
+						})
+						break
+					case '_r':
+						panActions[newId].options.push({
+							type: 'dropdown',
+							tooltip: 'Recall stored pan value',
+							label: 'From',
+							id: 'store',
+							default: 'me',
+							choices: [
+								{
+									id: 'me',
+									label: 'Channel',
+								},
+								...self.STORE_LOCATION,
+							],
+						})
+				}
+
+				if (sfx.op != '_s') {
+					// all but store have a fade time
+					panActions[newId].options.push(
+						...[
+							{
+								type: 'number',
+								label: 'Fade Duration (ms)',
+								id: 'duration',
+								default: 0,
+								min: 0,
+								step: 10,
+								max: 60000,
+							},
+						]
+					)
+				}
+			}
+		}
+	}
+
+	function makeSendVars(chID, stripID, theStrip, digits = 2, c = 0) {
+		for (let b = 1; b < 11; b++) {
+			let bOrF = b < 7 ? 'b' : 'f'
+			let sChan = b < 7 ? b : b - 6
+			let theID = chID + (c > 0 ? '/' + pad0(c, digits) : '') + '/mix/' + pad0(b) + '/level'
+			let whichSend = (c > 0 ? c : '') + (b < 7 ? ' Bus ' + b : ' FX ' + (b - 6))
+			let feedbackID = 's_' + unSlash(stripID) + (c > 0 ? c : '') + '_' + bOrF + sChan
+			fbToStat[feedbackID] = theID
+			stat[theID] = {
+				level: 0.0,
+				valid: false,
+				fbID: feedbackID,
+				fSteps: 161,
+				varID: feedbackID,
+				polled: 0,
+			}
+			defVariables.push({
+				name: theStrip.description + ' ' + whichSend + ' dB',
+				variableId: feedbackID + '_d',
+			})
+			defVariables.push({
+				name: theStrip.description + ' ' + whichSend + ' %',
+				variableId: feedbackID + '_p',
+			})
+			defVariables.push({
+				name: theStrip.description + ' ' + whichSend + ' % Relative Loudness',
+				variableId: feedbackID + '_rp',
+			})
+		}
+	}
+
+	function makePanVars(chID, stripID, theStrip, digits = 2, c = 0) {
+		let last = ['/lr','/bus'].includes(chID)  ? 0 : 6
+		for (let b = -1; b < last; b += 2) {
+			let theID = chID + (c > 0 ? '/' + pad0(c, digits) : '') + '/mix' + (b < 0 ? '' : '/' + pad0(b)) + '/pan'
+			let whichSend =  (c>0 ? c : '') + (b>0 ? ` Bus ${b}` : '')
+			let feedbackID = 'p_' + unSlash(stripID) + (c > 0 ? c : '') + (b < 0 ? '' : '_b' + b)
+			fbToStat[feedbackID] = theID
+			stat[theID] = {
+				pan: 0,
+				valid: false,
+				fbID: feedbackID,
+				fSteps: 101,
+				varID: feedbackID,
+				polled: 0,
+			}
+			defVariables.push({
+				name: theStrip.description + ' ' + whichSend + ' Pan',
+				variableId: feedbackID,
+			})
 		}
 	}
 
@@ -497,7 +750,7 @@ export function buildStripDefs(self) {
 				hasOn: theStrip.hasOn,
 				valid: false,
 				fbID: feedbackID,
-        fbSubs: new Set(),
+				fbSubs: new Set(),
 				polled: 0,
 			}
 			// 'proc' routing toggles
@@ -509,7 +762,7 @@ export function buildStripDefs(self) {
 					hasOn: true,
 					valid: false,
 					fbID: feedbackID,
-          fbSubs: new Set(),
+					fbSubs: new Set(),
 					polled: 0,
 				}
 				fbToStat[feedbackID] = theID
@@ -563,33 +816,14 @@ export function buildStripDefs(self) {
 				}
 			}
 			if (theStrip.hasLevel) {
-				for (let b = 1; b < 11; b++) {
-					let bOrF = b < 7 ? 'b' : 'f'
-					let sChan = b < 7 ? b : b - 6
-					theID = chID + '/mix/' + pad0(b) + '/level'
-					let whichSend = b < 7 ? ' Bus ' + b : ' FX ' + (b - 6)
-					feedbackID = 's_' + unSlash(stripID) + '_' + bOrF + sChan
-					fbToStat[feedbackID] = theID
-					stat[theID] = {
-						level: 0.0,
-						valid: false,
-						fbID: feedbackID,
-						fSteps: 161,
-						varID: feedbackID,
-						polled: 0,
-					}
-					defVariables.push({
-						name: theStrip.description + ' ' + whichSend + ' dB',
-						variableId: feedbackID + '_d',
-					})
-					defVariables.push({
-						name: theStrip.description + ' ' + whichSend + ' %',
-						variableId: feedbackID + '_p',
-					})
-					defVariables.push({
-						name: theStrip.description + ' ' + whichSend + ' % Relative Loudness',
-						variableId: feedbackID + '_rp',
-					})
+				makeSendVars(chID, stripID, theStrip)
+			}
+			// pans
+			if (theStrip.hasPan) {
+				makePanActions(chID + '/', theStrip)
+				makePanVars(chID, stripID, theStrip)
+				if (theStrip.hasLevel) {
+					makePanActions(chID + '/', theStrip, true)
 				}
 			}
 		} else {
@@ -645,33 +879,15 @@ export function buildStripDefs(self) {
 						variableId: feedbackID + '_rp',
 					})
 					if (theStrip.hasLevel) {
-						for (let b = 1; b < 11; b++) {
-							let bOrF = b < 7 ? 'b' : 'f'
-							let sChan = b < 7 ? b : b - 6
-							theID = chID + '/' + pad0(c, d) + '/mix/' + pad0(b) + '/level'
-							let whichSend = b < 7 ? ' Bus ' + b : ' FX ' + (b - 6)
-							feedbackID = 's_' + unSlash(stripID) + c + '_' + bOrF + sChan
-							fbToStat[feedbackID] = theID
-							stat[theID] = {
-								level: 0.0,
-								valid: false,
-								fbID: feedbackID,
-								fSteps: 161,
-								varID: feedbackID,
-								polled: 0,
-							}
-							defVariables.push({
-								name: capFirst(stripID) + ' ' + c + whichSend + ' dB',
-								variableId: feedbackID + '_d',
-							})
-							defVariables.push({
-								name: capFirst(stripID) + ' ' + c + whichSend + ' %',
-								variableId: feedbackID + '_p',
-							})
-							defVariables.push({
-								name: capFirst(stripID) + ' ' + c + whichSend + ' % Relative Loudness',
-								variableId: feedbackID + '_rp',
-							})
+						makeSendVars(chID, stripID, theStrip, d, c)
+					}
+					// channel pans
+					if (theStrip.hasPan) {
+						makePanActions(chID + '/', theStrip)
+						makePanVars(chID, stripID, theStrip, d, c)
+
+						if (theStrip.hasLevel) {
+							makePanActions(chID + '/', theStrip, true)
 						}
 					}
 				}
@@ -705,7 +921,7 @@ export function buildStripDefs(self) {
 
 		// mute feedback defs
 		let fbDescription = theStrip.description + ' ' + (theStrip.hasOn ? 'Mute' : '') + ' status'
-    feedbackID = unSlash(stripID)
+		feedbackID = unSlash(stripID)
 		muteFeedbacks[feedbackID] = {
 			type: 'boolean',
 			name: 'Indicate ' + fbDescription,
@@ -794,14 +1010,14 @@ export function buildStripDefs(self) {
 					const theChannel = feedback.options.theChannel
 					const fbWhich = feedback.feedbackId
 					if (theChannel) {
-						self.xStat[self.fbToStat[fbWhich  + theChannel]].fbSubs.add(feedback.id)
+						self.xStat[self.fbToStat[fbWhich + theChannel]].fbSubs.add(feedback.id)
 					}
 				},
 				unsubscribe: async (feedback, context) => {
 					const theChannel = feedback.options.theChannel
 					const fbWhich = feedback.feedbackId
 					if (theChannel) {
-						self.xStat[self.fbToStat[fbWhich  + theChannel]].fbSubs.delete(feedback.id)
+						self.xStat[self.fbToStat[fbWhich + theChannel]].fbSubs.delete(feedback.id)
 					}
 				},
 				callback: async (feedback, context) => {
@@ -871,7 +1087,7 @@ export function buildStripDefs(self) {
 	Object.assign(self.xStat, stat)
 	Object.assign(self.fbToStat, fbToStat)
 	//Object.assign(self.actionDefs, fadeActions)
-	Object.assign(self.actionDefs, levelActions, muteActions, procActions) //, storeActions)
+	Object.assign(self.actionDefs, levelActions, muteActions, panActions, procActions) //, storeActions)
 	Object.assign(self.muteFeedbacks, muteFeedbacks)
 	Object.assign(self.colorFeedbacks, colorFeedbacks)
 	self.variableDefs.push(...defVariables)

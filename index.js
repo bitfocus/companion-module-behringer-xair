@@ -164,7 +164,7 @@ class BAirInstance extends InstanceBase {
 	 */
 	pulse() {
 		this.sendOSC('/xremote', [])
-		// ask for meter data
+		// subscribe for meter data
 		this.sendOSC('/meters', [{ type: 's', value: '/meters/1' }])
 		// any leftover status needed?
 		if (this.needStats) {
@@ -597,6 +597,14 @@ class BAirInstance extends InstanceBase {
 								[this.xStat[node].varID + '_p']: Math.round(v * 100),
 								[this.xStat[node].varID + '_d']: this.faderToDB(v, 1024, false),
 								[this.xStat[node].varID + '_rp']: Math.round(this.faderToDB(v, 1024, true)),
+							})
+							this.xStat[node].idx = this.fLevels[this.xStat[node].fSteps].findIndex((i) => i >= v)
+							break
+						case 'pan':
+							v = Math.floor(v * 10000) / 10000
+							this.xStat[node].pan = v
+							this.setVariableValues({
+								[this.xStat[node].varID]: Math.round(v * 200 - 100),
 							})
 							this.xStat[node].idx = this.fLevels[this.xStat[node].fSteps].findIndex((i) => i >= v)
 							break

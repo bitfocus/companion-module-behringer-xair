@@ -29,6 +29,10 @@ Contributions for development and maintenance of this open source module are alw
 | Channel, USB, FX Send, Fx Return, Bus and Main fader adjust | Adjust the selected Channel, Channel, USB, FX Send, Fx Return, Bus and Main fader up or down by steps **see notes* |
 | Store Fader Channel, USB, FX Send, Fx Return, Bus and Main  | Stores the selected fader value for later recall **see notes*                                                      |
 | Recall Fader Channel, USB, FX Send, Fx Return, Bus and Main | Sets the selected fader to the stored value                                                                        |
+| Channel, USB, FX Return, Bus, Main Pan Balance set          | Set Pan Balance                                                                                                    |
+| Channel, USB, FX Return, Bus, Main Pan Balance adjust       | Adjust Pan Balance                                                                                                 |
+| Channel, USB, FX Return, Bus, Main Pan Balance store        | Store Pan Balance                                                                                                  |
+| Channel, USB, FX Return, Bus, Main Pan Balance recall       | Recall Pan Balance                                                                                                 |
 | Set State of Insert, Gate, EQ, Compressor, LR send          | Turn the selected processing element On or Off                                                                     |
 | Channel, USB, FX Send, Fx Return, Bus and Main label        | Sets the text label in the scribble strip of the selected Channel, USB, FX Send, Fx Return, Bus and Main           |
 | Channel, USB, FX Send, Fx Return, Bus and Main color        | Sets the color of the scribble strip of the selected Channel, USB, FX Send, Fx Return, Bus and Main                |
@@ -82,7 +86,14 @@ Contributions for development and maintenance of this open source module are alw
 | **$(INSTANCENAME:l_bus#)**       | Label on Bus Master #                           |
 | **$(INSTANCENAME:l_dca#)**       | Label on DCA #                                  |
 | **$(INSTANCENAME:l_rtn#)**       | Label on Return #                               |
-| **$(INSTANCENAME:l_fxsend#)**    | Label on FX Bus Master #                        |
+| **$(INSTANCENAME:p_lr)**         | Pan Balance on LR/Main                          |
+| **$(INSTANCENAME:p_rtn_aux)**    | Pan Balance on USB/Aux return                   |
+| **$(INSTANCENAME:p_rtn_aux_b#)** | Pan Balance on USB/Aux return to Bus # (1,3,5)  |
+| **$(INSTANCENAME:p_ch#)**        | Pan Balance on Channel #                        |
+| **$(INSTANCENAME:p_ch#_b#)**     | Pan Balance on Channel # to Bus # (1,3,5)       |
+| **$(INSTANCENAME:p_bus#)**       | Pan Balance on Bus Master #                     |
+| **$(INSTANCENAME:p_rtn#)**       | Pan Balance on Return #                         |
+| **$(INSTANCENAME:p_rtn#_b#)**    | Pan Balance on Return #  to Bus # (1,3,5)       |
 | **$(INSTANCENAME:f_lr_d)**       | LR/Main Fader dB                                |
 | **$(INSTANCENAME:f_lr_p)**       | LR/Main Fader Percent                           |
 | **$(INSTANCENAME:f_lr_rp)**      | LR/Main Relative Loudness Percent **see notes*  |
@@ -122,7 +133,7 @@ Contributions for development and maintenance of this open source module are alw
 
 **Note *Snapshot numbers*:** Replace {num} with the desired 2-digit snapshot number: $(xair:s_name_04). A snapshot with no name will have a default name of '#{num}': #04 (it is probably empty).
 
-**Note *Relative Loudness*:** This variable shows the percieved loudness with 0dB fader gain as a reference (100%). +/- 10dB changes become x2/x0.5 respectively as per the Loudness Equation (10 x log2). This allows for a more non-savy user friendly readout. *See table bellow.*
+**Note *Relative Loudness*:** This variable shows the percieved loudness with 0dB fader gain as a reference (100%). +/- 10dB changes become x2/x0.5 respectively as per the Loudness Equation (10 x log2). This allows for a more non-savy user friendly readout. *See table below.*
 
 **Example values:**
 
@@ -151,7 +162,7 @@ Contributions for development and maintenance of this open source module are alw
 | **Indicate Main LR Solo** *       | Changes the button when Main LR Solo on                                                      |
 | **Indicate USB/Aux Solo** *       | Changes the button when USB/Aux Solo on                                                      |
 | **Indicate processing status** *  | Changes the button according to the selected channel/process status                          |
-| **Indicate Monitor Source** *     | Changes the button when Monitor Source is set to selected option                   |
+| **Indicate Monitor Source** *     | Changes the button when Monitor Source is set to selected option                             |
 | **Color when Solo Mute** *        | Sets the button color when the Solo output is muted                                          |
 | **Color when Solo Mono** *        | Sets the button color when the Solo output is mono                                           |
 | **Color when Solo Dim PFL** *     | Sets the button color when the Solo PFL is dimmed                                            |
