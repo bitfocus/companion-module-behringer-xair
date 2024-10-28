@@ -63,7 +63,7 @@ export async function fadeTo(cmd, strip, opt, self) {
 		}
 		opTicks = parseInt(opTicks)
 	}
-	const faderLim = opt.faderLim
+	const faderLim = !!opt.faderLim
 	const steps = stat.fSteps
 	const span = parseFloat(opt.duration)
 	const oldVal = stat[node]
@@ -90,7 +90,7 @@ export async function fadeTo(cmd, strip, opt, self) {
 			// intentionally returns 'null' vs an accidental 'undefined'
 			break
 		default: // set new value
-			r = parseFloat(opt.fad)
+			r = parseFloat(opt[node])
 	}
 	// if max fader limit check requested
 	// anything over -0.3db resets to 0db
