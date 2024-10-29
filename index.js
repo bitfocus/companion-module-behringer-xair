@@ -44,6 +44,10 @@ class BAirInstance extends InstanceBase {
 	async init(config) {
 		this.config = config
 
+    if (!this.config.model) {
+      this.config.model = 'X18'
+    }
+
 		if (!this.config.channels) {
 			this.config.channels = parseInt(this.config.model.replace(/\D/g, ''))
 			this.saveConfig(this.config)
@@ -545,7 +549,8 @@ class BAirInstance extends InstanceBase {
 		if (this.oscPort) {
 			this.oscPort.close()
 		}
-		if (!this.config.host) {
+    // no host or still default '0.0.0.0'
+		if (!this.config.host || this.config.host.split('.').reduce((acc, b) => acc + b, 0) == 0) {
 			this.updateStatus(InstanceStatus.ConnectionFailure, 'No host IP')
 		} else {
 			//		if (this.config.host) {

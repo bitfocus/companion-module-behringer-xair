@@ -61,7 +61,7 @@ export const UpgradeScripts = [
 		}
 
 		for (let fb of props.feedbacks) {
-			if (fb.feedbackId?.match(/^solosw_/) && Object.keys(fb.style).length == 0) {
+			if (fb.feedbackId?.match(/^solosw_/) && Object.keys(fb?.style || {}).length == 0) {
 				fb.style = {
 					color: combineRgb(255, 255, 255),
 					bgcolor: 0,
