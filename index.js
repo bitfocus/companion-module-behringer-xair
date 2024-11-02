@@ -800,12 +800,11 @@ class BAirInstance extends InstanceBase {
 			let total = mv.total
 			const oldVal = mv.dbVal
 			mv.valid = true
-			mv.count = ++mv.count % 10
+			mv.count = ++mv.count % 2
 			total -= mv.samples[mv.count]
 			mv.samples[mv.count] = newVal
 			total += newVal
 			mv.total = total
-			let val = Math.round(total) / 10 // Math.round(total / 256.0 ) / 10
 			mv.dbVal = newVal
 			if (mv.fbSubs.size > 0 && newVal != oldVal) {
 				feedbacks.push(...mv.fbSubs)
@@ -815,7 +814,8 @@ class BAirInstance extends InstanceBase {
 			// console.log(`${mv.vName} = ${val}`)
 			// }
 			if (this.lastMeter && Date.now() - this.lastMeter > 50) {
-				variables[mv.vName] = Math.max(val, -60.0)
+//				let val = Math.round(total) / 10 // Math.round(total / 256.0 ) / 10
+				variables[mv.vName] = Math.max(Math.round(total) / 10, -60.0)
 			}
 		}
 		this.setVariableValues(variables)

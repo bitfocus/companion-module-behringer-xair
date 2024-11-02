@@ -11,6 +11,7 @@ export function buildStripDefs(self) {
 	let procActions = {}
 	let trimActions = {}
 	let panActions = {}
+  let panFeedbacks = {}
 	// let fadeActions = {}
 	// let storeActions = {}
 	let levelActions = {}
@@ -510,6 +511,8 @@ export function buildStripDefs(self) {
 			})
 		}
 	}
+
+
 
 	for (const theStrip of defStrip) {
 		let stripID = theStrip.id
@@ -1083,6 +1086,7 @@ export function buildStripDefs(self) {
 			}
 		}
 	}
+
 	// apply channel strip configurations
 	Object.assign(self.xStat, stat)
 	Object.assign(self.fbToStat, fbToStat)
