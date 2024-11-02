@@ -11,18 +11,23 @@ export function buildMeterDefs(self) {
 				fbID += '_' + fb.options.num1
 				break
 			case 'rtn':
+      fbID += fb.options.num2
+      break
 			case 'fx':
-				fbID += fb.options.num2
+				fbID += 'send_' + fb.options.num2
 				break
 			case 'bus':
 				fbID += fb.options.num3
 				break
+      case 'aux':
+        fbID = 'rtn_aux'
+        break;
 		}
 
 		if (['aux', 'rtn', 'lr', 'mon'].includes(type)) {
 			fbID += `_${fb.options.pan}`
 		}
-		return fbID ? `m_${fbID}` : undefined
+		return !(fbID && fbID.includes('undefined')) ? `m_${fbID}` : undefined
 	}
 
 	let stat = {}
@@ -90,13 +95,16 @@ export function buildMeterDefs(self) {
 					feedbackID =
 					muteFeedbackID =
 					variableID =
-						['bus1', 'bus2', 'bus3', 'bus4', 'bus5', 'bus6', 'fxsend1', 'fxsend2', 'fxsend3', 'fxsend4'][i - 26]
+						['bus1', 'bus2', 'bus3', 'bus4', 'bus5', 'bus6', 'fxsend_1', 'fxsend_2', 'fxsend_3', 'fxsend_4'][i - 26]
 				n = ['Bus 1', 'Bus 2', 'Bus 3', 'Bus 4', 'Bus 5', 'Bus 6', 'FX Send 1', 'FX Send 2', 'FX Send 3', 'FX Send 4'][
 					i - 26
 				]
 			} else {
 				let m = parseInt((i - 36) / 2)
 				channelID = feedbackID = muteFeedbackID = ['lr', 'mon'][m]
+        if (channelID=='mon') {
+          muteFeedbackID = 'solo_mute'
+        }
 				channelID += i % 2 ? '_r' : '_l'
 				variableID = feedbackID += i % 2 ? '_r' : '_l'
 				n = ['Main out', 'Monitor out'][m]
@@ -138,7 +146,7 @@ export function buildMeterDefs(self) {
 				type: 'dropdown',
 				label: 'Type',
 				id: 'type',
-				default: 'ch',
+				default: 'lr',
 				choices: stripType,
 			},
 			{
@@ -146,6 +154,7 @@ export function buildMeterDefs(self) {
 				type: 'number',
 				label: 'Number',
 				id: 'num1',
+				default: 1,
 				min: 1,
 				max: 16,
 				isVisible: (options) => options.type == 'ch',
@@ -155,6 +164,7 @@ export function buildMeterDefs(self) {
 				type: 'number',
 				label: 'Number',
 				id: 'num2',
+				default: 1,
 				min: 1,
 				max: 4,
 				isVisible: (options) => ['rtn', 'fx'].includes(options.type),
@@ -164,6 +174,7 @@ export function buildMeterDefs(self) {
 				type: 'number',
 				label: 'Number',
 				id: 'num3',
+				default: 1,
 				min: 1,
 				max: 6,
 				isVisible: (options) => options.type == 'bus',
