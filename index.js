@@ -44,9 +44,9 @@ class BAirInstance extends InstanceBase {
 	async init(config) {
 		this.config = config
 
-    if (!this.config.model) {
-      this.config.model = 'X18'
-    }
+		if (!this.config.model) {
+			this.config.model = 'X18'
+		}
 
 		if (!this.config.channels) {
 			this.config.channels = parseInt(this.config.model.replace(/\D/g, ''))
@@ -169,7 +169,11 @@ class BAirInstance extends InstanceBase {
 	pulse() {
 		this.sendOSC('/xremote', [])
 		// subscribe for meter data
-		this.sendOSC('/meters', [{ type: 's', value: '/meters/1' }])
+		this.sendOSC('/-local/updrate', [{ type: 'i', value: 1 }])
+		this.sendOSC('/meters', [
+			{ type: 's', value: '/meters/1' },
+			{ type: 'i', value: 0 },
+		])
 		// any leftover status needed?
 		if (this.needStats) {
 			this.pollStats()
@@ -549,7 +553,7 @@ class BAirInstance extends InstanceBase {
 		if (this.oscPort) {
 			this.oscPort.close()
 		}
-    // no host or still default '0.0.0.0'
+		// no host or still default '0.0.0.0'
 		if (!this.config.host || this.config.host.split('.').reduce((acc, b) => acc + b, 0) == 0) {
 			this.updateStatus(InstanceStatus.ConnectionFailure, 'No host IP')
 		} else {
@@ -800,26 +804,20 @@ class BAirInstance extends InstanceBase {
 			let total = mv.total
 			const oldVal = mv.dbVal
 			mv.valid = true
-			mv.count = ++mv.count % 2
+			mv.dbVal = newVal
+			if (mv.fbSubs.size > 0 && newVal != oldVal) {
+				this.checkFeedbacksById(...mv.fbSubs)
+			}
+			mv.count = ++mv.count % 10
 			total -= mv.samples[mv.count]
 			mv.samples[mv.count] = newVal
 			total += newVal
 			mv.total = total
-			mv.dbVal = newVal
-			if (mv.fbSubs.size > 0 && newVal != oldVal) {
-				feedbacks.push(...mv.fbSubs)
-			}
-			// newVal = Math.round((val / 256.0) * 10) / 10
-			// if (['v_ch15','v_ch16'].includes(mv.vName)) {
-			// console.log(`${mv.vName} = ${val}`)
-			// }
 			if (this.lastMeter && Date.now() - this.lastMeter > 50) {
-//				let val = Math.round(total) / 10 // Math.round(total / 256.0 ) / 10
 				variables[mv.vName] = Math.max(Math.round(total) / 10, -60.0)
 			}
 		}
 		this.setVariableValues(variables)
-		this.checkFeedbacksById(feedbacks)
 		this.lastMeter = Date.now()
 	}
 
