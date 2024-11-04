@@ -11,17 +11,17 @@ export function buildMeterDefs(self) {
 				fbID += '_' + fb.options.num1
 				break
 			case 'rtn':
-      fbID += fb.options.num2
-      break
+				fbID += fb.options.num2
+				break
 			case 'fx':
 				fbID += 'send_' + fb.options.num2
 				break
 			case 'bus':
 				fbID += fb.options.num3
 				break
-      case 'aux':
-        fbID = 'rtn_aux'
-        break;
+			case 'aux':
+				fbID = 'rtn_aux'
+				break
 		}
 
 		if (['aux', 'rtn', 'lr', 'mon'].includes(type)) {
@@ -102,9 +102,9 @@ export function buildMeterDefs(self) {
 			} else {
 				let m = parseInt((i - 36) / 2)
 				channelID = feedbackID = muteFeedbackID = ['lr', 'mon'][m]
-        if (channelID=='mon') {
-          muteFeedbackID = 'solo_mute'
-        }
+				if (channelID == 'mon') {
+					muteFeedbackID = 'solo_mute'
+				}
 				channelID += i % 2 ? '_r' : '_l'
 				variableID = feedbackID += i % 2 ? '_r' : '_l'
 				n = ['Main out', 'Monitor out'][m]

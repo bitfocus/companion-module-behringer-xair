@@ -2,6 +2,7 @@
 import { defStrip } from './defStrip.js'
 import { combineRgb, InstanceStatus, Regex } from '@companion-module/base'
 import { pad0, unSlash, setToggle, fadeTo } from './helpers.js'
+import { graphics } from 'companion-module-utils'
 
 // build the channel strip actions/feedbaks/variables
 // injects results to the base module via self
@@ -11,7 +12,7 @@ export function buildStripDefs(self) {
 	let procActions = {}
 	let trimActions = {}
 	let panActions = {}
-  let panFeedbacks = {}
+	let panFeedbacks = {}
 	// let fadeActions = {}
 	// let storeActions = {}
 	let levelActions = {}
@@ -262,24 +263,25 @@ export function buildStripDefs(self) {
 
 	function makePanActions(aId, theStrip, send = false) {
 		for (let sfx of self.levelOpts) {
-			const newName = (send ? 'Send' : theStrip.description) + ` Pan ${sfx.act}`
-			const newLabel = !send ? theStrip.Description : sendLabel(theStrip.description, theStrip.min, theStrip.max)
-			const newId = (send ? 's_' : '') + theStrip.panID + sfx.op
-			if (panActions[newId] !== undefined) {
+			const panName = theStrip.description + (send ? ' Send' : '') + ` Pan ${sfx.act}`
+			const panID = (send ? 's_' : '') + theStrip.panID + sfx.op
+			const panLabel = !send ? theStrip.description : sendLabel(theStrip.description, theStrip.min, theStrip.max)
+			if (!!panActions[panID]) {
 				// add strip option to action
-				panActions[newId].options[0].choices.push({
+				panActions[panID].options[0].choices.push({
 					id: aId,
-					label: newLabel,
+					label: panLabel,
 				})
-				panActions[newId].options[1].label += ', ' + theStrip.description
-			} else {
+				panActions[panID].options[1].label += ', ' + theStrip.description
+			}
+			if (panActions[panID] == undefined) {
 				// new action
-				panActions[newId] = {
-					name: newName,
+				panActions[panID] = {
+					name: panName,
 					options: [], // default empty
 				}
 				if (theStrip.digits > 0) {
-					panActions[newId].options = [
+					panActions[panID].options = [
 						{
 							type: 'dropdown',
 							label: 'Type',
@@ -287,7 +289,7 @@ export function buildStripDefs(self) {
 							choices: [
 								{
 									id: aId,
-									label: newLabel,
+									label: panLabel,
 								},
 							],
 							default: aId,
@@ -303,14 +305,19 @@ export function buildStripDefs(self) {
 							required: true,
 						},
 					]
-					panActions[newId].callback = async (action, context) => {
+					panActions[panID].callback = async (action, context) => {
 						const opt = action.options
 						const aId = action.actionId
 						const nVal = opt.type == '/ch/' ? pad0(opt.num) : opt.num
 						const strip = opt.type + nVal + '/mix/pan'
+						if ('_' != aId.slice(-2, 1)) {
+							// direct set
+							opt.pan = (opt.pan / 2 + 50) / 100
+						}
 						try {
 							let fVal = await fadeTo(aId, strip, opt, self)
-
+							self.updateStatus(InstanceStatus.Ok)
+							self.paramError = false
 							if ('_s' != aId.slice(-2)) {
 								// store is local, no console command
 								self.sendOSC(strip, { type: 'f', value: fVal })
@@ -324,12 +331,13 @@ export function buildStripDefs(self) {
 				} else {
 					// Main LR
 					const strip = (theStrip.panID == 'mPan' ? '/lr' : '/rtn/aux') + '/mix/pan'
-					panActions[newId].callback = async (action, context) => {
+					panActions[panID].callback = async (action, context) => {
 						const opt = action.options
 						const aId = action.actionId
-            if ('_' != aId.slice(-2,1)) { // direct set
-              opt.pan = (opt.pan / 2 + 50) / 100
-            }
+						if ('_' != aId.slice(-2, 1)) {
+							// direct set
+							opt.pan = (opt.pan / 2 + 50) / 100
+						}
 						try {
 							let fVal = await fadeTo(aId, strip, opt, self)
 							self.updateStatus(InstanceStatus.Ok)
@@ -348,7 +356,7 @@ export function buildStripDefs(self) {
 				}
 				if (theStrip.hasLevel && send) {
 					// bus sends
-					panActions[newId].options.push({
+					panActions[panID].options.push({
 						type: 'dropdown',
 						label: 'Bus',
 						id: 'busNum',
@@ -359,7 +367,7 @@ export function buildStripDefs(self) {
 						],
 						default: 1,
 					})
-					panActions[newId].callback = async (action, context) => {
+					panActions[panID].callback = async (action, context) => {
 						const opt = action.options
 						const aId = action.actionId
 						let nVal = ''
@@ -370,9 +378,14 @@ export function buildStripDefs(self) {
 						}
 						const bVal = pad0(opt.busNum)
 						const strip = opt.type + nVal + 'mix/' + bVal + '/pan'
+						if ('_' != aId.slice(-2, 1)) {
+							// direct set
+							opt.pan = (opt.pan / 2 + 50) / 100
+						}
 						try {
 							let fVal = await fadeTo(aId, strip, opt, self)
-
+							self.updateStatus(InstanceStatus.Ok)
+							self.paramError = false
 							if ('_s' != aId.slice(-2)) {
 								// store is local, no console command
 								self.sendOSC(strip, { type: 'f', value: fVal })
@@ -386,7 +399,7 @@ export function buildStripDefs(self) {
 				}
 				switch (sfx.op) {
 					case '':
-						panActions[newId].options.push({
+						panActions[panID].options.push({
 							type: 'number',
 							label: 'Balance (-100 to 100)',
 							id: 'pan',
@@ -397,7 +410,7 @@ export function buildStripDefs(self) {
 						})
 						break
 					case '_a':
-						panActions[newId].options.push({
+						panActions[panID].options.push({
 							type: 'textinput',
 							useVariables: true,
 							tooltip: 'Move +/-',
@@ -407,7 +420,7 @@ export function buildStripDefs(self) {
 						})
 						break
 					case '_s':
-						panActions[newId].options.push({
+						panActions[panID].options.push({
 							type: 'dropdown',
 							tooltip: 'Store pan value for later recall',
 							label: 'Where',
@@ -423,7 +436,7 @@ export function buildStripDefs(self) {
 						})
 						break
 					case '_r':
-						panActions[newId].options.push({
+						panActions[panID].options.push({
 							type: 'dropdown',
 							tooltip: 'Recall stored pan value',
 							label: 'From',
@@ -441,7 +454,7 @@ export function buildStripDefs(self) {
 
 				if (sfx.op != '_s') {
 					// all but store have a fade time
-					panActions[newId].options.push(
+					panActions[panID].options.push(
 						...[
 							{
 								type: 'number',
@@ -491,16 +504,17 @@ export function buildStripDefs(self) {
 	}
 
 	function makePanVars(chID, stripID, theStrip, digits = 2, c = 0) {
-		let last = ['/lr','/bus'].includes(chID)  ? 0 : 6
+		let last = ['/lr', '/bus'].includes(chID) ? 0 : 6
 		for (let b = -1; b < last; b += 2) {
 			let theID = chID + (c > 0 ? '/' + pad0(c, digits) : '') + '/mix' + (b < 0 ? '' : '/' + pad0(b)) + '/pan'
-			let whichSend =  (c>0 ? c : '') + (b>0 ? ` Bus ${b}` : '')
+			let whichSend = (c > 0 ? c : '') + (b > 0 ? ` Bus ${b}` : '')
 			let feedbackID = 'p_' + unSlash(stripID) + (c > 0 ? c : '') + (b < 0 ? '' : '_b' + b)
 			fbToStat[feedbackID] = theID
 			stat[theID] = {
 				pan: 0,
 				valid: false,
 				fbID: feedbackID,
+				fbSubs: new Set(),
 				fSteps: 101,
 				varID: feedbackID,
 				polled: 0,
@@ -512,7 +526,251 @@ export function buildStripDefs(self) {
 		}
 	}
 
+	function makePanFeedbacks() {
+		async function getFbId(fb, ctx) {
+			const type = fb.options.type
+			let fbID = type
+			let v = 0
+			let err = ''
+			switch (type) {
+				case 'ch':
+					v = parseInt(await ctx.parseVariablesInString(fb.options.ch))
+					if (v < 1 || v > 16) {
+						err = `Channel number out of range: ${fb.options.ch}`
+					} else {
+						fbID += `${v}`
+					}
+					break
+				case 'rtn':
+					v = parseInt(await ctx.parseVariablesInString(fb.options.rtn))
+					if (v < 1 || v > 4) {
+						err = `FX Return number out of range: ${fb.options.rtn}`
+					} else {
+						fbID += `${v}`
+					}
+					break
+				case 'bus':
+					v = parseInt(await ctx.parseVariablesInString(fb.options.send))
+					if (v < 1 || v > 6) {
+						fbID += `${v}`
+					} else {
+						err = `Bus Return number out of range: ${fb.options.send}`
+					}
+					break
+				case 'aux':
+					fbID = 'rtn_aux'
+					break
+			}
 
+			return !(fbID && fbID.includes('undefined')) ? `p_${fbID}` : undefined
+		}
+
+		const stripType = defStrip.reduce((ret, ts) => {
+			if (ts.hasPan) {
+				ret.push({ id: ts.id.split('/').slice(-1).join(), label: ts.description })
+			}
+			return ret
+		}, [])
+
+		panFeedbacks['pans'] = {
+			type: 'advanced',
+			name: 'Pan bar',
+			description: 'Adds pan indicator bar to button',
+			options: [
+				{
+					type: 'dropdown',
+					label: 'Type',
+					id: 'type',
+					default: 'lr',
+					choices: stripType,
+				},
+				{
+					// channel numbers
+					type: 'number',
+					label: 'Number',
+					id: 'ch',
+					default: 1,
+					min: 1,
+					max: 16,
+					useVariables: true,
+					isVisible: (options) => options.type == 'ch',
+				},
+				{
+					// channel send
+					type: 'number',
+					label: 'Send (1,3,5)',
+					id: 'send',
+					default: 0,
+					useVariables: true,
+					choices: [
+						{ id: 0, label: 'Channel pan' },
+						{ id: 1, label: 'Bus send 1' },
+						{ id: 3, label: 'Bus send 3' },
+						{ id: 5, label: 'Bus send 5' },
+					],
+					isVisible: (options) => options.type == 'ch',
+				},
+				{
+					// fx rtn
+					type: 'number',
+					label: 'Number',
+					id: 'rtn',
+					default: 1,
+					min: 1,
+					max: 4,
+					useVariables: true,
+					isVisible: (options) => 'rtn' == options.type,
+				},
+				{
+					// bus
+					type: 'number',
+					label: 'Number',
+					id: 'bus',
+					default: 1,
+					min: 1,
+					max: 6,
+					useVariables: true,
+					isVisible: (options) => options.type == 'bus',
+				},
+
+				{
+					type: 'dropdown',
+					label: 'Bar Location',
+					id: 'loc',
+					default: 'b',
+					choices: [
+						{ id: 't', label: 'top' },
+						{ id: 'b', label: 'bottom' },
+					],
+				},
+			],
+			subscribe: async (feedback, context) => {
+				let fbID = await getFbId(feedback, context)
+				if (fbID) {
+					self.xStat[fbToStat[fbID]].fbSubs.add(feedback.id)
+				}
+			},
+			unsubscribe: async (feedback, context) => {
+				let fbID = await getFbId(feedback, context)
+				if (fbID) {
+					self.xStat[fbToStat[fbID]].fbSubs.delete(feedback.id)
+				}
+			},
+			callback: async (feedback, context) => {
+				let fbID = await getFbId(feedback, context)
+				const loc = feedback.options.loc
+
+				const top = loc == 'b' ? feedback.image.height - 6 : 3
+				const left = 6
+				let panVal = 0
+				let panColors = []
+				const stat = self.xStat[fbToStat[fbID]]
+
+				if (!(fbID && stat?.valid)) {
+					return
+				}
+				//const stat = self.xStat[fbToStat[fbID]]
+				panVal = (stat.pan * 200) / 2
+
+				if (panVal < 50) {
+					if (panVal == 0) {
+						panColors.push({
+							size: 50,
+							color: combineRgb(200, 200, 200),
+							background: combineRgb(200, 200, 200),
+							backgroundOpacity: 64,
+						})
+					} else {
+						panColors.push({
+							size: panVal - 1,
+							color: combineRgb(64, 64, 64),
+							background: combineRgb(64, 64, 64),
+							backgroundOpacity: 64,
+						})
+						panColors.push({
+							size: 50 - panVal,
+							color: combineRgb(200, 200, (50 - panVal) * 4),
+							background: combineRgb(200, 200, (50 - panVal) * 4),
+							backgroundOpacity: 64,
+						})
+					}
+					panColors.push({
+						size: 50,
+						color: combineRgb(32, 32, 32),
+						background: combineRgb(32, 32, 32),
+						backgroundOpacity: 64,
+					})
+				} else if (panVal == 50) {
+					panColors.push({
+						size: 100,
+						color: combineRgb(32, 32, 32),
+						background: combineRgb(32, 32, 32),
+						backgroundOpacity: 64,
+					})
+					// panColors.push({
+					// 	size: 2,
+					// 	color: combineRgb(200, 200, 200),
+					// 	background: combineRgb(200, 200, 200),
+					// 	backgroundOpacity: 64,
+					// })
+					// panColors.push({
+					// 	size: 49,
+					// 	color: combineRgb(32, 32, 32),
+					// 	background: combineRgb(32, 32, 32),
+					// 	backgroundOpacity: 64,
+					// })
+				} else {
+					// >50
+					panColors.push({
+						size: 50,
+						color: combineRgb(32, 32, 32),
+						background: combineRgb(32, 32, 32),
+						backgroundOpacity: 64,
+					})
+					if (panVal == 100) {
+						panColors.push({
+							size: 50,
+							color: combineRgb(200, 200, 200),
+							background: combineRgb(200, 200, 200),
+							backgroundOpacity: 64,
+						})
+					} else {
+						panColors.push({
+							size: panVal - 49,
+							color: combineRgb(200, 200, (panVal - 49) * 4),
+							background: combineRgb(200, 200, (panVal - 49) * 4),
+							backgroundOpacity: 64,
+						})
+						panColors.push({
+							size: 100 - panVal,
+							color: combineRgb(64, 64, 64),
+							background: combineRgb(64, 64, 64),
+							backgroundOpacity: 64,
+						})
+					}
+				}
+
+				const meter = graphics.bar({
+					width: feedback.image.width,
+					height: feedback.image.height,
+					barWidth: 4,
+					barLength: feedback.image.width - 12,
+					colors: panColors,
+
+					type: 'horizontal',
+					offsetX: left,
+					offsetY: top,
+					value: 100,
+					meter2: 0, // Math.pow(meter2 / 100, 0.25) * 100,
+					opacity: 255,
+				})
+
+				return {
+					imageBuffer: meter,
+				}
+			},
+		}
+	}
 
 	for (const theStrip of defStrip) {
 		let stripID = theStrip.id
@@ -744,6 +1002,14 @@ export function buildStripDefs(self) {
 			makeLevelActions('send', 'Send', chID + '/', theStrip)
 		}
 
+		if (theStrip.hasPan) {
+			makePanActions(chID + '/', theStrip)
+			if (theStrip.hasLevel) {
+				makePanActions(chID + '/', theStrip, true)
+			}
+			//makePanVars(chID, stripID, theStrip)
+		}
+
 		if (d == 0) {
 			let theID = chID + muteSfx
 			feedbackID = unSlash(stripID)
@@ -821,14 +1087,6 @@ export function buildStripDefs(self) {
 			if (theStrip.hasLevel) {
 				makeSendVars(chID, stripID, theStrip)
 			}
-			// pans
-			if (theStrip.hasPan) {
-				makePanActions(chID + '/', theStrip)
-				makePanVars(chID, stripID, theStrip)
-				if (theStrip.hasLevel) {
-					makePanActions(chID + '/', theStrip, true)
-				}
-			}
 		} else {
 			for (let c = theStrip.min; c <= theStrip.max; c++) {
 				let theID = chID + '/' + pad0(c, d) + muteSfx
@@ -884,15 +1142,10 @@ export function buildStripDefs(self) {
 					if (theStrip.hasLevel) {
 						makeSendVars(chID, stripID, theStrip, d, c)
 					}
-					// channel pans
-					if (theStrip.hasPan) {
-						makePanActions(chID + '/', theStrip)
-						makePanVars(chID, stripID, theStrip, d, c)
-
-						if (theStrip.hasLevel) {
-							makePanActions(chID + '/', theStrip, true)
-						}
-					}
+				}
+				// channel pans
+				if (theStrip.hasPan) {
+					makePanVars(chID, stripID, theStrip, d, c)
 				}
 				if ('' != labelSfx) {
 					theID = chID + '/' + pad0(c, d) + labelSfx + '/name'
@@ -991,8 +1244,8 @@ export function buildStripDefs(self) {
 			let feedbackID = `${unSlash(stripID)}_${p}`
 			muteFeedbacks[feedbackID] = {
 				type: 'boolean',
-				name: 'Indicate ' + fbDescription,
-				description: 'Indicate ' + fbDescription + ' on button',
+				name: fbDescription,
+				description: 'Show ' + fbDescription + ' on button',
 				options: [
 					{
 						type: 'dropdown',
@@ -1087,12 +1340,13 @@ export function buildStripDefs(self) {
 		}
 	}
 
+	makePanFeedbacks()
 	// apply channel strip configurations
 	Object.assign(self.xStat, stat)
 	Object.assign(self.fbToStat, fbToStat)
 	//Object.assign(self.actionDefs, fadeActions)
 	Object.assign(self.actionDefs, levelActions, muteActions, panActions, procActions) //, storeActions)
-	Object.assign(self.muteFeedbacks, muteFeedbacks)
+	Object.assign(self.muteFeedbacks, muteFeedbacks, panFeedbacks)
 	Object.assign(self.colorFeedbacks, colorFeedbacks)
 	self.variableDefs.push(...defVariables)
 }

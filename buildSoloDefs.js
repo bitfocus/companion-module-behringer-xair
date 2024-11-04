@@ -92,8 +92,8 @@ export function buildSoloDefs(self) {
 					const fbDescription = 'Solo ' + ch.description + ' status'
 					soloFeedbacks[soloID] = {
 						type: 'boolean',
-						name: 'Indicate ' + fbDescription,
-						description: 'Indicate ' + fbDescription + ' on button',
+						name: fbDescription,
+						description: 'Show' + fbDescription + ' on button',
 						options: [
 							{
 								type: 'dropdown',
@@ -244,7 +244,7 @@ export function buildSoloDefs(self) {
 								soloFeedbacks[actID] = {
 									type: 'boolean',
 									name: fbDescription,
-									description: 'Indicate ' + fbDescription + ' is on button',
+									description: 'Show ' + fbDescription + ' on Button',
 									options: [
 										{
 											type: 'dropdown',
@@ -331,8 +331,8 @@ export function buildSoloDefs(self) {
 								fbDescription = 'Solo ' + ch.description + ' status'
 								soloFeedbacks[actID] = {
 									type: 'boolean',
-									name: 'Indicate ' + fbDescription,
-									description: 'Indicate ' + fbDescription + ' on button',
+									name: fbDescription,
+									description: 'Show ' + fbDescription + ' on button',
 									options: [
 										{
 											type: 'dropdown',
