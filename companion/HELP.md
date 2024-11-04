@@ -66,7 +66,7 @@ Contributions for development and maintenance of this open source module are alw
 
 **Note *Snapshots*:** If the Previous/Next numbered Snapshot is empty, the mixer will not change snapshots. The Save snapshot function does NOT ask for confirmation before saving/overwriting. The Snapshot to load item can be a dynamic variable/expression.
 
-**Note *Presets*:** There are some preset buttons included to show some common button configurations with pre-built actions and feedback indicators. They use channel 1 as a demonstration. There is also a 'Rude Solo' button available.
+**Note *Presets*:** There are some preset buttons included to some common button configurations with pre-built actions and feedback indicators. They use channel 1 as a demonstration. There is also a 'Rude Solo' button available.
 
 ## Dynamic Variables
 
@@ -158,11 +158,11 @@ Contributions for development and maintenance of this open source module are alw
 | **Color of Channel label**        | Sets the button color to match the seleted channel (Channel/Bus/DCA/FX send/FX return) label |
 | **Color of Main LR label**        | Sets the button color to match the Main LR label                                             |
 | **Color of USB/Aux label**        | Sets the button color to match the USB/Aux label                                             |
-| **Indicate Channel Solo** *       | Changes the button when (Channel/Bus/DCA/FX send/FX return) Solo on                          |
-| **Indicate Main LR Solo** *       | Changes the button when Main LR Solo on                                                      |
-| **Indicate USB/Aux Solo** *       | Changes the button when USB/Aux Solo on                                                      |
-| **Indicate processing status** *  | Changes the button according to the selected channel/process status                          |
-| **Indicate Monitor Source** *     | Changes the button when Monitor Source is set to selected option                             |
+| **Channel Solo** *                | Changes the button when (Channel/Bus/DCA/FX send/FX return) Solo on                          |
+| **Main LR Solo** *                | Changes the button when Main LR Solo on                                                      |
+| **USB/Aux Solo** *                | Changes the button when USB/Aux Solo on                                                      |
+| **Processing status** *           | Changes the button according to the selected channel/process status                          |
+| **Monitor Source** *              | Changes the button when Monitor Source is set to selected option                             |
 | **Color when Solo Mute** *        | Sets the button color when the Solo output is muted                                          |
 | **Color when Solo Mono** *        | Sets the button color when the Solo output is mono                                           |
 | **Color when Solo Dim PFL** *     | Sets the button color when the Solo PFL is dimmed                                            |

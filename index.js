@@ -616,6 +616,9 @@ class BAirInstance extends InstanceBase {
 								[this.xStat[node].varID]: Math.round(v * 200 - 100),
 							})
 							this.xStat[node].idx = this.fLevels[this.xStat[node].fSteps].findIndex((i) => i >= v)
+							if (this.xStat[node].fbSubs.size > 0) {
+								this.checkFeedbacksById(...this.xStat[node].fbSubs)
+							}
 							break
 						case 'gain': // headamp
 							let ha = parseInt(node.split('/')[2])
@@ -805,15 +808,16 @@ class BAirInstance extends InstanceBase {
 			const oldVal = mv.dbVal
 			mv.valid = true
 			mv.dbVal = newVal
-			if (mv.fbSubs.size > 0 && newVal != oldVal) {
-				this.checkFeedbacksById(...mv.fbSubs)
-			}
+
 			mv.count = ++mv.count % 10
 			total -= mv.samples[mv.count]
 			mv.samples[mv.count] = newVal
 			total += newVal
 			mv.total = total
 			if (this.lastMeter && Date.now() - this.lastMeter > 50) {
+				if (mv.fbSubs.size > 0 && newVal != oldVal) {
+					this.checkFeedbacksById(...mv.fbSubs)
+				}
 				variables[mv.vName] = Math.max(Math.round(total) / 10, -60.0)
 			}
 		}
