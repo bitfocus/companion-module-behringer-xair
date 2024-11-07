@@ -306,11 +306,11 @@ export function buildStripDefs(self) {
 						},
 					]
 					panActions[panID].callback = async (action, context) => {
-						const opt = action.options
+						let opt = action.options
 						const aId = action.actionId
 						const nVal = opt.type == '/ch/' ? pad0(opt.num) : opt.num
 						const strip = opt.type + nVal + '/mix/pan'
-						if ('_' != aId.slice(-2, 1)) {
+						if ('_' != aId.substr(-2, 1)) {
 							// direct set
 							opt.pan = (opt.pan / 2 + 50) / 100
 						}
@@ -330,11 +330,13 @@ export function buildStripDefs(self) {
 					}
 				} else {
 					// Main LR
-					const strip = (theStrip.panID == 'mPan' ? '/lr' : '/rtn/aux') + '/mix/pan'
 					panActions[panID].callback = async (action, context) => {
-						const opt = action.options
+						const strip = (theStrip.panID == 'mPan' ? '/lr' : '/rtn/aux') + '/mix/pan'
+						let opt = action.options
 						const aId = action.actionId
-						if ('_' != aId.slice(-2, 1)) {
+						let junk = aId.substr(-2, 1)
+
+						if ('_' != aId.substr(-2, 1)) {
 							// direct set
 							opt.pan = (opt.pan / 2 + 50) / 100
 						}
@@ -378,7 +380,7 @@ export function buildStripDefs(self) {
 						}
 						const bVal = pad0(opt.busNum)
 						const strip = opt.type + nVal + 'mix/' + bVal + '/pan'
-						if ('_' != aId.slice(-2, 1)) {
+						if ('_' != aId.substr(-2, 1)) {
 							// direct set
 							opt.pan = (opt.pan / 2 + 50) / 100
 						}
@@ -1000,14 +1002,11 @@ export function buildStripDefs(self) {
 		// add channel type to send actions
 		if (theStrip.hasLevel) {
 			makeLevelActions('send', 'Send', chID + '/', theStrip)
+			makePanActions(chID + '/', theStrip, true)
 		}
 
 		if (theStrip.hasPan) {
 			makePanActions(chID + '/', theStrip)
-			if (theStrip.hasLevel) {
-				makePanActions(chID + '/', theStrip, true)
-			}
-			//makePanVars(chID, stripID, theStrip)
 		}
 
 		if (d == 0) {
@@ -1086,6 +1085,9 @@ export function buildStripDefs(self) {
 			}
 			if (theStrip.hasLevel) {
 				makeSendVars(chID, stripID, theStrip)
+			}
+			if (theStrip.hasPan) {
+				makePanVars(chID, stripID, theStrip)
 			}
 		} else {
 			for (let c = theStrip.min; c <= theStrip.max; c++) {
