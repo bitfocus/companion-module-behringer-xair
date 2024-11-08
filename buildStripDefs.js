@@ -1092,7 +1092,7 @@ export function buildStripDefs(self) {
 		} else {
 			for (let c = theStrip.min; c <= theStrip.max; c++) {
 				let theID = chID + '/' + pad0(c, d) + muteSfx
-				let feedbackID = stripID + '_' + c
+				let feedbackID = unSlash(stripID) + '_' + c
 				fbToStat[feedbackID] = theID
 				stat[theID] = {
 					isOn: false,

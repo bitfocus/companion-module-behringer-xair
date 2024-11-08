@@ -129,4 +129,30 @@ export const UpgradeScripts = [
 		}
 		return result
 	},
+
+  function (context, props) {
+		const result = {
+			updatedConfig: null,
+			updatedActions: [],
+			updatedFeedbacks: [],
+		}
+
+		for (let fb of props.feedbacks) {
+			let changed = false
+			if (fb.feedbackId == 'config/mute') {
+				fb.feedbackId = 'config_mute'
+				changed = true
+			}
+			if (fb.feedbackId == 'config_mute') {
+				if (fb.options.state == undefined) {
+					fb.options.state = '1'
+					changed = true
+				}
+			}
+			if (changed) {
+				result.updatedFeedbacks.push(fb)
+			}
+		}
+		return result
+	},
 ]
