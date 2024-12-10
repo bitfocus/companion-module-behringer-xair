@@ -90,7 +90,7 @@ export async function fadeTo(cmd, strip, opt, self) {
 			// intentionally returns 'null' vs an accidental 'undefined'
 			break
 		default: // set new value
-			r = parseFloat(opt[node])
+			r = parseFloat(opt[node] || opt.fad)
 	}
 	// if max fader limit check requested
 	// anything over -0.3db resets to 0db
