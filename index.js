@@ -190,23 +190,52 @@ class BAirInstance extends InstanceBase {
 	}
 
 	/**
+		 * Get broadcast addresses for all local IPv4 interfaces.
+		 * @returns {string[]} An array of broadcast addresses (e.g., ["192.168.1.255", ...]).
+		 */
+	getBroadcastAddresses() {
+		const os = require('os');
+		const interfaces = os.networkInterfaces();
+		const broadcastAddresses = [];
+
+		for (const name of Object.keys(interfaces)) {
+			for (const iface of interfaces[name]) {
+				if (iface.family === 'IPv4' && !iface.internal) {
+					// Calculate broadcast address by replacing the last octet with 255
+					const parts = iface.address.split('.');
+					parts[3] = '255';
+					broadcastAddresses.push(parts.join('.'));
+				}
+			}
+		}
+
+		return broadcastAddresses;
+	}
+
+
+	/**
 	 *
 	 * network scanner interval
 	 */
 	probe() {
+		const broadcastAddresses = this.getBroadcastAddresses();
+
 		if (!(this.probeCount % 6)) {
-			// scan every 30 seconds
-			this.scanPort.send(
-				{
-					address: '/xinfo',
-					args: [],
-				},
-				'255.255.255.255',
-				10024
-			)
+			// Scan every 30 seconds
+			for (const broadcast of broadcastAddresses) {
+				this.scanPort.send(
+					{
+						address: '/xinfo',
+						args: [],
+					},
+					broadcast,
+					10024
+				);
+			}
 		}
-		this.probeCount++
+		this.probeCount++;
 	}
+
 
 	/**
 	 * Gather list of local mixer IP numbers and names
