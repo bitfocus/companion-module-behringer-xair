@@ -13,6 +13,7 @@ import { buildHADefs } from './buildHADefs.js'
 import { getConfigFields } from './config.js'
 import { ICON_SOLO } from './icons.js'
 import { pad0 } from './helpers.js'
+import  os from 'os'
 
 class BAirInstance extends InstanceBase {
 	constructor(internal) {
@@ -190,35 +191,33 @@ class BAirInstance extends InstanceBase {
 	}
 
 	/**
-		 * Get broadcast addresses for all local IPv4 interfaces.
-		 * @returns {string[]} An array of broadcast addresses (e.g., ["192.168.1.255", ...]).
-		 */
+	 * Get broadcast addresses for all local IPv4 interfaces.
+	 * @returns {string[]} An array of broadcast addresses (e.g., ["192.168.1.255", ...]).
+	 */
 	getBroadcastAddresses() {
-		const os = require('os');
-		const interfaces = os.networkInterfaces();
-		const broadcastAddresses = [];
+		const interfaces = os.networkInterfaces()
+		const broadcastAddresses = []
 
 		for (const name of Object.keys(interfaces)) {
 			for (const iface of interfaces[name]) {
 				if (iface.family === 'IPv4' && !iface.internal) {
 					// Calculate broadcast address by replacing the last octet with 255
-					const parts = iface.address.split('.');
-					parts[3] = '255';
-					broadcastAddresses.push(parts.join('.'));
+					const parts = iface.address.split('.')
+					parts[3] = '255'
+					broadcastAddresses.push(parts.join('.'))
 				}
 			}
 		}
 
-		return broadcastAddresses;
+		return broadcastAddresses
 	}
-
 
 	/**
 	 *
 	 * network scanner interval
 	 */
 	probe() {
-		const broadcastAddresses = this.getBroadcastAddresses();
+		const broadcastAddresses = this.getBroadcastAddresses()
 
 		if (!(this.probeCount % 6)) {
 			// Scan every 30 seconds
@@ -230,12 +229,11 @@ class BAirInstance extends InstanceBase {
 					},
 					broadcast,
 					10024
-				);
+				)
 			}
 		}
-		this.probeCount++;
+		this.probeCount++
 	}
-
 
 	/**
 	 * Gather list of local mixer IP numbers and names
