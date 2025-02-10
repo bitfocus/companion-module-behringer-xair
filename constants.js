@@ -19,10 +19,21 @@ export function buildConstants(self) {
 	]
 
 	// pre-set linear values for various other 'levels'
+	// todo: continue from here
+	self.LIMITS = {
+		1024: { fmin: -100, fmax: 10 }, // main faders
+		161: { fmin: -100, fmax: 10 }, // sends, solo level
+		101: { fmin: -100, fmax: 100 }, // pan
+		145: { fmin: -12, fmax: 60 }, // headamp gain
+		73: { fmin: -18, fmax: 18 }, // solo source trim
+		65: { fmin: -12, fmax: 20 }, // aux gain
+		40: { fmin: -40, fmax: 0 }, // solo dim att/gain
+	}
+
 	const lvls = [
 		161, // sends, solo level
 		101, // pan
-		145, // trim, headamp gain
+		145, // headamp gain
 		73, // solo source trim
 		65, // aux gain
 		40, // solo dim att/gain
@@ -191,8 +202,8 @@ export function buildConstants(self) {
 				break
 			case 17:
 				self.HA_CONFIG[c] = {
-					12: { name: `1/4 ${c - 16}`, has: true },
-					16: { name: `1/4 ${c - 16}`, has: true },
+					12: { name: `TRS ${c - 16}`, has: true },
+					16: { name: `TRS ${c - 16}`, has: true },
 					18: { name: 'RCA', has: true },
 					trim: 65,
 					ph: false,
@@ -206,8 +217,8 @@ export function buildConstants(self) {
 			case 23:
 			case 24:
 				self.HA_CONFIG[c] = {
-					12: { name: `1/4 ${c - 16}`, has: true },
-					16: { name: `1/4 ${c - 16}`, has: true },
+					12: { name: `TRS ${c - 16}`, has: true },
+					16: { name: `TRS ${c - 16}`, has: true },
 					18: { name: '', has: false },
 					trim: 65,
 					ph: false,
