@@ -13,7 +13,8 @@ import { buildHADefs } from './buildHADefs.js'
 import { getConfigFields } from './config.js'
 import { ICON_SOLO } from './icons.js'
 import { pad0 } from './helpers.js'
-import  os from 'os'
+import os from 'os'
+import { runInThisContext } from 'vm'
 
 class BAirInstance extends InstanceBase {
 	constructor(internal) {
@@ -35,8 +36,9 @@ class BAirInstance extends InstanceBase {
 		this.crossFades = {}
 		this.unitsFound = {}
 
-		this.PollCount = 30
-		this.PollTimeout = 25
+		this.debugLevel = process.env.DEVELOPER ? 2 : 0
+		this.PollCount = 10
+		this.PollTimeout = 40
 		this.getConfigFields = getConfigFields
 
 		buildConstants(this)
@@ -472,17 +474,16 @@ class BAirInstance extends InstanceBase {
 	}
 
 	pollStats() {
-		let stillNeed = false
+		let stillNeed = 0
 		let counter = 0
 		let timeNow = Date.now()
 		let timeOut = timeNow - this.PollTimeout
 
 		for (const id in this.xStat) {
 			if (!this.xStat[id].valid) {
-				stillNeed = true
+				stillNeed++
 				if (this.xStat[id].polled < timeOut) {
 					this.sendOSC(id)
-					// this.log('debug', `sending ${id}`)
 					this.xStat[id].polled = timeNow
 					counter++
 					// only allow 'PollCount' queries during one cycle
@@ -508,7 +509,7 @@ class BAirInstance extends InstanceBase {
 			return
 		}
 
-		if (!stillNeed) {
+		if (0 == stillNeed) {
 			this.updateStatus(InstanceStatus.Ok, 'Console status loaded')
 			const c = Object.keys(this.xStat).length
 			const d = (c / ((timeNow - this.timeStart) / 1000)).toFixed(1)
@@ -540,7 +541,18 @@ class BAirInstance extends InstanceBase {
 	}
 
 	/**
-	 * Calculate logarithmic fader value (0..1) for a given 'step'
+	 * Calculate linear fader dB value for a given 'step'
+	 * 	depending on total 'steps'
+	 * @param {integer} i - which step
+	 * @param {integer} steps - number of steps for this fader parameter
+	 * @returns {float}
+	 */
+	linFaderToDB(f, lim = { fmin: -12, fmax: 20 }) {
+		return (lim.fmin + (lim.fmax - lim.fmin) * f).toFixed(1)
+	}
+
+	/**
+	 * Calculate logarithmic fader dB value for a given 'step'
 	 * 	depending on total 'steps'
 	 * @param {integer} i - which step
 	 * @param {integer} steps - number of steps for this fader parameter
@@ -548,7 +560,6 @@ class BAirInstance extends InstanceBase {
 	 */
 	logFaderToDB(f, steps) {
 		let res = i / (steps - 1)
-
 		return Math.floor((fmin * exp(log(fmax / fmin) * f)) / 10000)
 	}
 
@@ -601,7 +612,7 @@ class BAirInstance extends InstanceBase {
 				const top = node.split('/')[1]
 				this.hostResponse = true
 
-				if ('meters' != top) {
+				if ('meters' != top && this.debugLevel > 0) {
 					this.log('debug', `received ${node}:` + JSON.stringify(args) + ` from ${info.address}`)
 				}
 				if (this.xStat[node] !== undefined) {
@@ -652,10 +663,10 @@ class BAirInstance extends InstanceBase {
 							this.xStat[node].gain = v
 							this.setVariableValues({
 								[this.xStat[node].varID + '_p']: Math.round(v * 100),
-								[this.xStat[node].varID + '_d']: this.faderToDB(
+								[this.xStat[node].varID + '_d']: this.linFaderToDB(
 									v,
-									this.HA_CONFIG[ha][this.myMixer.channels].trim,
-									false
+									this.LIMITS[this.xStat[node].trim]
+									//{ fmin: this.LIMITS[this.xStat[node].trim].fmin, fmax: this.LIMITS[this.xStat[node].trim].fmax},
 								),
 							})
 							break
@@ -664,6 +675,9 @@ class BAirInstance extends InstanceBase {
 							this.setVariableValues({
 								[this.xStat[node].varID]: !!v,
 							})
+							if (this.xStat[node].fbSubs?.size > 0) {
+								this.checkFeedbacksById(...this.xStat[node].fbSubs)
+							}
 							break
 						case 'source':
 							this.xStat[node].m_source = v
@@ -756,7 +770,7 @@ class BAirInstance extends InstanceBase {
 							this.parseMeters1(args[0].value)
 							break
 					}
-					if ('meters' != top) {
+					if ('meters' != top && this.debugLevel > 0) {
 						this.log('debug', message.address, args)
 					}
 				}
@@ -945,7 +959,9 @@ class BAirInstance extends InstanceBase {
 		arg = arg ?? []
 
 		if (this.oscPort) {
-			this.log('debug', `OSC > ${node}:` + JSON.stringify(arg))
+			if (this.debugLevel > 0) {
+				this.log('debug', `OSC > ${node}:` + JSON.stringify(arg))
+			}
 			this.oscPort.send({
 				address: node,
 				args: arg,
