@@ -44,6 +44,10 @@ export function buildStripDefs(self) {
 			node: 'mix/lr',
 			desc: 'Main Out',
 		},
+		hpf: {
+			node: 'preamp/hpon',
+			desc: 'High Pass Filter',
+		},
 	}
 
 	for (let b = 1; b < 11; b++) {
