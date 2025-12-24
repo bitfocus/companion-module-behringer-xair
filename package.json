@@ -1,6 +1,6 @@
 {
 	"name": "behringer-xair",
-	"version": "2.6.6",
+	"version": "2.7.0",
 	"type": "module",
 	"main": "index.js",
 	"scripts": {
