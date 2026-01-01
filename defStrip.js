@@ -11,7 +11,7 @@ export const defStrip = [
 		'panID': 'pan',
 		'hasLevel': true,
 		'hasMix': true,
-		'proc': ['gate', 'insert', 'eq', 'dyn', 'lr'],
+		'proc': ['gate', 'insert', 'eq', 'dyn', 'lr', 'hpf'],
 		'procPfx': '',
 		'hasOn': true,
 		'hasPan': true,
