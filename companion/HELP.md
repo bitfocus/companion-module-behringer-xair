@@ -33,7 +33,7 @@ Contributions for development and maintenance of this open source module are alw
 | Channel, USB, FX Return, Bus, Main Pan Balance adjust       | Adjust Pan Balance                                                                                                 |
 | Channel, USB, FX Return, Bus, Main Pan Balance store        | Store Pan Balance                                                                                                  |
 | Channel, USB, FX Return, Bus, Main Pan Balance recall       | Recall Pan Balance                                                                                                 |
-| Set State of Insert, Gate, EQ, Compressor, LR send          | Turn the selected processing element On or Off                                                                     |
+| Set State of Insert, Gate, EQ, Compressor, LR send, HPF     | Turn the selected processing element On or Off                                                                     |
 | Channel, USB, FX Send, Fx Return, Bus and Main label        | Sets the text label in the scribble strip of the selected Channel, USB, FX Send, Fx Return, Bus and Main           |
 | Channel, USB, FX Send, Fx Return, Bus and Main color        | Sets the color of the scribble strip of the selected Channel, USB, FX Send, Fx Return, Bus and Main                |
 | Mute Group                                                  | Turns the selected mute group on or off                                                                            |

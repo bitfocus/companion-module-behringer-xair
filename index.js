@@ -620,6 +620,7 @@ class BAirInstance extends InstanceBase {
 					switch (leaf) {
 						case 'on':
 						case 'lr':
+						case 'hpon':
 						case '1':
 						case '2':
 						case '3':
