@@ -116,7 +116,7 @@ export const defStrip = [
 		'panID': 'usbPan',
 		'hasLevel': true,
 		'hasMix': true,
-		'proc': ['eq'],
+		'proc': ['eq','lr'],
 		'procPfx': 'u_',
 		'hasOn': true,
 		'hasPan': true,
