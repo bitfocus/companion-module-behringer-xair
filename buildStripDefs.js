@@ -817,7 +817,7 @@ export function buildStripDefs(self) {
 					],
 					callback: async (action, context) => {
 						const p = action.actionId.split('_')
-						const strip = p[0] == 'm' ? `/lr/${p[1]}/on` : `/rtn/aux/${p[1]}/on`
+						const strip = (p[0] == 'm' ? `/lr/` : `/rtn/aux/`) + (p[1] == 'lr' ? 'mix/lr' : `${p[1]}/on`)
 						const arg = {
 							type: 'i',
 							value: setToggle(self.xStat[strip].isOn, action.options.set),
