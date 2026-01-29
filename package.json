@@ -17,6 +17,6 @@
 		"osc": "^2.4.3"
 	},
 	"devDependencies": {
-		"@companion-module/tools": "^2.1.0"
+		"@companion-module/tools": "^2.6.1"
 	}
 }
