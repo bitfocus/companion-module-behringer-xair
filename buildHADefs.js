@@ -1,4 +1,4 @@
-import { pad0 } from './helpers.js'
+import { pad0, fadeTo } from './helpers.js'
 
 export function buildHADefs(self) {
 	let haActions = {}
@@ -20,9 +20,8 @@ export function buildHADefs(self) {
 		self.xStat[theID] = {
 			varID: vID,
 			valid: false,
-			trim: self.HA_CONFIG[s].trim,
+			trimVal: self.HA_CONFIG[s].trimVal,
 			fbID: fID,
-			//trim: 0,
 			polled: 0,
 		}
 		if (self.HA_CONFIG[s][mc].has) {
@@ -61,25 +60,49 @@ export function buildHADefs(self) {
 
 	const act = `headamp`
 	haActions[act] = {
-		headamp: {
-			name: `Headamp Level`,
-			options: [
-				{
-					type: 'dropdown',
-					label: 'Input',
-					id: 'input',
-					choices: haChoices,
-				},
-				{
-					type: 'dropdown',
-					label: 'Action',
-					id: 'act',
-					choices: self.levelOpts,
-					default: '',
-				},
-			],
+		name: `Headamp Level`,
+		options: [
+			{
+				type: 'dropdown',
+				label: 'Input',
+				id: 'input',
+				useVariables: true,
+				default: haChoices[0].id,
+				choices: haChoices,
+			},
+			{
+				type: 'dropdown',
+				label: 'Action',
+				id: 'act',
+				choices: self.LEVEL_CHOICES,
+				default: '',
+			},
+			{
+				type: 'textinput',
+				label: 'Set',
+				id: 'set',
+				default: '0',
+				useVariables: true,
+				isVisible: (options)=> options.act='',
+			}
+		],
+		callback: async (action, context) => {
+			const aId = action.act
+			const strip = '/headamp/' + pad0(opt.num) + '/gain'
+			try {
+				let fVal = await fadeTo(aId, strip, opt, self)
+
+				if ('_s' != aId.slice(-2)) {
+					// store is local, no console command
+					self.sendOSC(strip, { type: 'f', value: fVal })
+				}
+			} catch (error) {
+				const err = [action.controlId, error.message].join(' → ')
+				self.updateStatus(InstanceStatus.BadConfig, err)
+				self.paramError = true
+			}
 		},
 	}
-
+	Object.assign(self.actionDefs, haActions)
 	self.variableDefs.push(...haVariables)
 }
