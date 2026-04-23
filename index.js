@@ -14,7 +14,6 @@ import { getConfigFields } from './config.js'
 import { ICON_SOLO } from './icons.js'
 import { pad0 } from './helpers.js'
 import os from 'os'
-import { runInThisContext } from 'vm'
 
 class BAirInstance extends InstanceBase {
 	constructor(internal) {
@@ -26,7 +25,6 @@ class BAirInstance extends InstanceBase {
 
 		this.soloOffset = {}
 		this.actionDefs = {}
-		this.haActionDefs = {}
 		this.muteFeedbacks = {}
 		this.meterFeedbacks = {}
 		this.colorFeedbacks = {}
@@ -193,26 +191,30 @@ class BAirInstance extends InstanceBase {
 	}
 
 	/**
+	 *
 	 * Get broadcast addresses for all local IPv4 interfaces.
 	 * @returns {string[]} An array of broadcast addresses (e.g., ["192.168.1.255", ...]).
+	 * updated: 28-Feb-2025 to properly address non-octet net masks.
 	 */
+
 	getBroadcastAddresses() {
-		const interfaces = os.networkInterfaces()
-		const broadcastAddresses = []
+  const ret = [];
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name]) {
+       // console.log(iface);
+      if ('ipv4' !== iface.family.toLowerCase() || iface.internal) {
+        continue;
+      }
+      const parts = iface.netmask.split('.').map(Number);
+      const ipParts = iface.address.split('.').map(Number);
+      const broadcastParts = ipParts.map((part, index) => part | (~parts[index] & 255));
+      ret.push( broadcastParts.join('.'))
+    }
+  }
+  return ret;
+}
 
-		for (const name of Object.keys(interfaces)) {
-			for (const iface of interfaces[name]) {
-				if (iface.family === 'IPv4' && !iface.internal) {
-					// Calculate broadcast address by replacing the last octet with 255
-					const parts = iface.address.split('.')
-					parts[3] = '255'
-					broadcastAddresses.push(parts.join('.'))
-				}
-			}
-		}
-
-		return broadcastAddresses
-	}
 
 	/**
 	 *
@@ -666,8 +668,8 @@ class BAirInstance extends InstanceBase {
 								[this.xStat[node].varID + '_p']: Math.round(v * 100),
 								[this.xStat[node].varID + '_d']: this.linFaderToDB(
 									v,
-									this.LIMITS[this.xStat[node].trim]
-									//{ fmin: this.LIMITS[this.xStat[node].trim].fmin, fmax: this.LIMITS[this.xStat[node].trim].fmax},
+									this.LIMITS[this.xStat[node].trimVal]
+									//{ fmin: this.LIMITS[this.xStat[node].trimVal].fmin, fmax: this.LIMITS[this.xStat[node].trimVal].fmax},
 								),
 							})
 							break

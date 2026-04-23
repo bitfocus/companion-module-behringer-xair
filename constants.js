@@ -18,6 +18,14 @@ export function buildConstants(self) {
 		{ op: '_r', act: 'Recall' },
 	]
 
+		self.LEVEL_CHOICES = []
+		self.levelOpts.forEach((val) => {
+			self.LEVEL_CHOICES.push({
+				id: val.op,
+				label: val.act,
+			})
+		})
+
 	// pre-set linear values for various other 'levels'
 	// todo: continue from here
 	self.LIMITS = {
@@ -168,7 +176,7 @@ export function buildConstants(self) {
 					12: { name: `XLR ${c}`, has: true },
 					16: { name: `XLR ${c}`, has: true },
 					18: { name: `XLR ${c}`, has: true },
-					trim: 145,
+					trimVal: 145,
 					ph: true,
 				}
 				break
@@ -180,7 +188,7 @@ export function buildConstants(self) {
 					12: { name: '', has: false },
 					16: { name: `XLR ${c}`, has: true },
 					18: { name: `XLR ${c}`, has: true },
-					trim: 145,
+					trimVal: 145,
 					ph: true,
 				}
 				break
@@ -196,7 +204,7 @@ export function buildConstants(self) {
 					12: { name: '', has: false },
 					16: { name: '', has: false },
 					18: { name: `XLR ${c}`, has: true },
-					trim: 145,
+					trimVal: 145,
 					ph: true,
 				}
 				break
@@ -205,7 +213,7 @@ export function buildConstants(self) {
 					12: { name: `TRS ${c - 16}`, has: true },
 					16: { name: `TRS ${c - 16}`, has: true },
 					18: { name: 'RCA', has: true },
-					trim: 65,
+					trimVal: 65,
 					ph: false,
 				}
 				break
@@ -220,7 +228,7 @@ export function buildConstants(self) {
 					12: { name: `TRS ${c - 16}`, has: true },
 					16: { name: `TRS ${c - 16}`, has: true },
 					18: { name: '', has: false },
-					trim: 65,
+					trimVal: 65,
 					ph: false,
 				}
 				break

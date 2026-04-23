@@ -17,7 +17,7 @@ export function buildMeterDefs(self) {
 				fbID += 'send_' + fb.options.num2
 				break
 			case 'bus':
-				fbID += fb.options.num3
+				fbID += '_' + fb.options.num3
 				break
 			case 'aux':
 				fbID = 'rtn_aux'
@@ -95,7 +95,9 @@ export function buildMeterDefs(self) {
 					feedbackID =
 					muteFeedbackID =
 					variableID =
-						['bus1', 'bus2', 'bus3', 'bus4', 'bus5', 'bus6', 'fxsend_1', 'fxsend_2', 'fxsend_3', 'fxsend_4'][i - 26]
+						['bus_1', 'bus_2', 'bus_3', 'bus_4', 'bus_5', 'bus_6', 'fxsend_1', 'fxsend_2', 'fxsend_3', 'fxsend_4'][
+							i - 26
+						]
 				n = ['Bus 1', 'Bus 2', 'Bus 3', 'Bus 4', 'Bus 5', 'Bus 6', 'FX Send 1', 'FX Send 2', 'FX Send 3', 'FX Send 4'][
 					i - 26
 				]
