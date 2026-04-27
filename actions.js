@@ -40,7 +40,7 @@ export function buildStaticActions(self) {
 					type: 's',
 					value: '' + opt.lab,
 				}
-				nVal = opt.type == '/ch/' ? pad0(opt.num) : opt.num
+				const nVal = opt.type == '/ch/' ? pad0(opt.num) : opt.num
 				await sendOSCCmd(opt.type + nVal + '/config/name', arg)
 			},
 		},
