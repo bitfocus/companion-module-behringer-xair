@@ -11,7 +11,7 @@ const REGEX_PERCENT = new RegExp(Regex.PERCENT)
  * @since 2.3.0
  */
 export function pad0(num, len = 2) {
-	return num.toString().padStart(len,'0')
+	return num.toString().padStart(len, '0')
 }
 
 /**
@@ -64,6 +64,7 @@ export async function fadeTo(cmd, strip, opt, self) {
 		opTicks = parseInt(opTicks)
 	}
 	const faderLim = !!opt.faderLim
+	const faderMax = +self.config.faderMax || 0.75
 	const steps = stat.fSteps
 	const span = parseFloat(opt.duration)
 	const oldVal = stat[node]
@@ -92,9 +93,8 @@ export async function fadeTo(cmd, strip, opt, self) {
 		default: // set new value
 			r = parseFloat(opt[node] || opt.fad)
 	}
-	// if max fader limit check requested
-	// anything over -0.3db resets to 0db
-	faderLim && r >= 0.74 ? (r = 0.75) : r
+	// if max fader limit is set
+	r = Math.min(r, faderLim ? faderMax: r)
 
 	// set up cross fade?
 	if (span > 0 && r >= 0) {

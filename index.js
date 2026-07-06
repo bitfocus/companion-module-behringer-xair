@@ -49,6 +49,10 @@ class BAirInstance extends InstanceBase {
 			this.config.model = 'X18'
 		}
 
+		if (!this.config.faderMax) {
+			this.config.faderMax = '0.75'
+		}
+
 		if (!this.config.channels) {
 			this.config.channels = parseInt(this.config.model.replace(/\D/g, ''))
 			this.saveConfig(this.config)
@@ -198,23 +202,22 @@ class BAirInstance extends InstanceBase {
 	 */
 
 	getBroadcastAddresses() {
-  const ret = [];
-  const interfaces = os.networkInterfaces();
-  for (const name of Object.keys(interfaces)) {
-    for (const iface of interfaces[name]) {
-       // console.log(iface);
-      if ('ipv4' !== iface.family.toLowerCase() || iface.internal) {
-        continue;
-      }
-      const parts = iface.netmask.split('.').map(Number);
-      const ipParts = iface.address.split('.').map(Number);
-      const broadcastParts = ipParts.map((part, index) => part | (~parts[index] & 255));
-      ret.push( broadcastParts.join('.'))
-    }
-  }
-  return ret;
-}
-
+		const ret = []
+		const interfaces = os.networkInterfaces()
+		for (const name of Object.keys(interfaces)) {
+			for (const iface of interfaces[name]) {
+				// console.log(iface);
+				if ('ipv4' !== iface.family.toLowerCase() || iface.internal) {
+					continue
+				}
+				const parts = iface.netmask.split('.').map(Number)
+				const ipParts = iface.address.split('.').map(Number)
+				const broadcastParts = ipParts.map((part, index) => part | (~parts[index] & 255))
+				ret.push(broadcastParts.join('.'))
+			}
+		}
+		return ret
+	}
 
 	/**
 	 *
