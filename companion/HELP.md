@@ -1,8 +1,6 @@
 # Midas MR18 / Behringer XR 12/16/18
 
-This Module controls the Midas MR series and Behringer XR series of consoles
-go over to [Midas](https://www.midasconsoles.com/catalog.html?brandName=midas&catalog=Application&category=C-MIDAS-MIXERS-DIGITALSTAGEBOXMIXERS) or [Behringer](https://www.behringer.com/catalog.html?brandName=behringer&catalog=Application&category=C-BEHRINGER-MIXERS-DIGITALSTAGEBOXMIXERS)
-to get additional information about the consoles and their capabilities.
+This Module controls the Midas M Air and Behringer X Air series of consoles.
 
 --------
 Contributions for development and maintenance of this open source module are always welcome
@@ -14,9 +12,11 @@ Contributions for development and maintenance of this open source module are alw
 
 **Target IP:** Enter the IP address of the Mixer
 
+**Fader Max:** Limit fader adjustments to this maximum value when toggled in the action.
+
 **Scan for XAir Mixers?** Module will scan for XAir mixers on the network
 
-**Select mixer by Name** Choose a mixer from those located on the network
+**Select mixer by Name:** Choose a mixer from those located on the network
 
 **Note* Once a mixer (name) is chosen, the module will attempt to re-locate it if the IP changes. This feature can be disabled by un-checking the *Scan for Mixers* option
 

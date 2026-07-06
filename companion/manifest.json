@@ -10,7 +10,7 @@
 	"maintainers": [
 		{
 			"name": "John Knight, Jr",
-			"email": "istnv@ayesti.com"
+			"email": "istnv@istnv.com"
 		},
 		{
 			"name": "Per Roine",
@@ -20,9 +20,7 @@
 			"name": "Janos Münker"
 		}
 	],
-	"legacyIds": [
-		"xair"
-	],
+	"legacyIds": ["xair"],
 	"runtime": {
 		"type": "node18",
 		"api": "nodejs-ipc",
@@ -30,17 +28,6 @@
 		"entrypoint": "../index.js"
 	},
 	"manufacturer": "Behringer/Midas",
-	"products": [
-		"XR/MR",
-		"XAir",
-		"XR12",
-		"XR16",
-		"X18",
-		"XR18"
-	],
-	"keywords": [
-		"Audio",
-		"Mixer",
-		"Console"
-	]
+	"products": ["XR/MR", "XAir", "XR12", "XR16", "X18", "XR18", "MAir", "MR12", "MR16", "MR18", "M18"],
+	"keywords": ["Audio", "Mixer", "Console"]
 }

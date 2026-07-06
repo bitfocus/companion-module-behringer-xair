@@ -13,6 +13,15 @@ export function getConfigFields() {
 			regex: Regex.IP,
 		},
 		{
+			type: 'dropdown',
+			id: 'faderMax',
+			label: 'Fader Max',
+			tooltip: 'Maximum fader level allowed\nwhen enabled on fader action',
+			width: 6,
+			default: '0.75',
+			choices: this.FADER_VALUES,
+		},
+		{
 			type: 'checkbox',
 			id: 'scan',
 			label: 'Scan network for XAir mixers?',
