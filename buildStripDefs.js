@@ -99,32 +99,44 @@ export function buildStripDefs(self) {
 							default: aId,
 						},
 						{
-							type: 'number',
+							type: 'textinput',
 							label: theStrip.description,
 							id: 'num',
 							default: 1,
-							min: theStrip.min,
-							max: theStrip.max,
-							range: false,
+							tooltip: `Value should correspond to the proper number between ${theStrip.min} and ${theStrip.max}`,
+							useVariables: true,
 							required: true,
 						},
 					]
 					levelActions[newId].callback = async (action, context) => {
 						const opt = action.options
 						const aId = action.actionId
-						const nVal = opt.type == '/ch/' ? pad0(opt.num) : opt.num
-						const strip = opt.type + nVal + (opt.type == '/dca/' ? '/fader' : '/mix/fader')
-						try {
-							let fVal = await fadeTo(aId, strip, opt, self)
 
-							if ('_s' != aId.slice(-2)) {
-								// store is local, no console command
-								self.sendOSC(strip, { type: 'f', value: fVal })
+						opt.num = parseInt(opt.num)
+
+						console.log(opt, Number.isNaN(opt.num), opt.num < theStrip.min, opt.num > theStrip.max)
+
+						if (Number.isNaN(opt.num) || opt.num < theStrip.min || opt.num > theStrip.max) {
+							self.updateStatus(
+								InstanceStatus.BadConfig,
+								`${action.controlId} → Invalid input: ${opt.num}`,
+							);
+							self.paramError = true;
+						} else {
+							const nVal = opt.type == '/ch/' ? pad0(opt.num) : opt.num
+							const strip = opt.type + nVal + (opt.type == '/dca/' ? '/fader' : '/mix/fader')
+							try {
+								let fVal = await fadeTo(aId, strip, opt, self)
+
+								if ('_s' != aId.slice(-2)) {
+									// store is local, no console command
+									self.sendOSC(strip, { type: 'f', value: fVal })
+								}
+							} catch (error) {
+								const err = [action.controlId, error.message].join(' → ')
+								self.updateStatus(InstanceStatus.BadConfig, err)
+								self.paramError = true
 							}
-						} catch (error) {
-							const err = [action.controlId, error.message].join(' → ')
-							self.updateStatus(InstanceStatus.BadConfig, err)
-							self.paramError = true
 						}
 					}
 				} else {
@@ -917,30 +929,40 @@ export function buildStripDefs(self) {
 								default: chID + '/',
 							},
 							{
-								type: 'number',
+								type: 'textinput',
 								label: theStrip.description,
 								id: 'num',
 								default: 1,
-								min: theStrip.min,
-								max: theStrip.max,
-								range: false,
+								tooltip: `Value should correspond to the proper number between ${theStrip.min} and ${theStrip.max}`,
+								useVariables: true,
 								required: true,
 							},
 						],
 						callback: async (action, context) => {
 							const opt = action.options
-							const nVal = opt.type == '/ch/' ? pad0(opt.num) : opt.num
-							let strip = opt.type + nVal
-							if (opt.type == '/dca/') {
-								strip += '/on'
+
+							opt.num = parseInt(opt.num)
+
+							if (Number.isNaN(opt.num) || opt.num < theStrip.min || opt.num > theStrip.max) {
+								self.updateStatus(
+									InstanceStatus.BadConfig,
+									`${action.controlId} → Invalid input: ${opt.num}`,
+								);
+								self.paramError = true;
 							} else {
-								strip += '/mix/on'
+								const nVal = opt.type == '/ch/' ? pad0(opt.num) : opt.num
+								let strip = opt.type + nVal
+								if (opt.type == '/dca/') {
+									strip += '/on'
+								} else {
+									strip += '/mix/on'
+								}
+								const arg = {
+									type: 'i',
+									value: setToggle(self.xStat[strip].isOn, opt.mute),
+								}
+								self.sendOSC(strip, arg)
 							}
-							const arg = {
-								type: 'i',
-								value: setToggle(self.xStat[strip].isOn, opt.mute),
-							}
-							self.sendOSC(strip, arg)
 						},
 					}
 				} else {
@@ -1234,15 +1256,14 @@ export function buildStripDefs(self) {
 		}
 		if (d > 0) {
 			muteFeedbacks[feedbackID].options.push({
-				type: 'number',
+				type: 'textinput',
 				label: theStrip.description + ' number',
 				id: 'theChannel',
 				default: 1,
-				min: theStrip.min,
-				max: theStrip.max,
-				range: false,
+				tooltip: `Value should correspond to the proper number between ${theStrip.min} and ${theStrip.max}`,
+				useVariables: true,
 				required: true,
-			})
+			});
 		}
 		// 'proc' routing feedback toggles
 		for (let p of theStrip.proc) {
@@ -1298,15 +1319,14 @@ export function buildStripDefs(self) {
 			}
 			if (d > 0) {
 				muteFeedbacks[feedbackID].options.push({
-					type: 'number',
+					type: 'textinput',
 					label: theStrip.description + ' number',
 					id: 'theChannel',
 					default: 1,
-					min: theStrip.min,
-					max: theStrip.max,
-					range: false,
+					tooltip: `Value should correspond to the proper number between ${theStrip.min} and ${theStrip.max}`,
+					useVariables: true,
 					required: true,
-				})
+				});
 			}
 		}
 
@@ -1333,13 +1353,12 @@ export function buildStripDefs(self) {
 			}
 			if (d > 0) {
 				colorFeedbacks[cID].options.push({
-					type: 'number',
+					type: 'textinput',
 					label: theStrip.description + ' number',
 					id: 'theChannel',
 					default: 1,
-					min: theStrip.min,
-					max: theStrip.max,
-					range: false,
+					tooltip: `Value should correspond to the proper number between ${theStrip.min} and ${theStrip.max}`,
+					useVariables: true,
 					required: true,
 				})
 			}

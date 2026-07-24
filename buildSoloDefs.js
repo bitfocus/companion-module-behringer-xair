@@ -57,15 +57,14 @@ export function buildSoloDefs(self) {
 							}
 						}
 						soloActions[soloID].options.push({
-							type: 'number',
+							type: 'textinput',
 							label: ch.description,
 							id: 'num',
 							default: 1,
-							min: ch.min,
-							max: ch.max,
-							range: false,
+							tooltip: `Value should correspond to the proper number between ${ch.min} and ${ch.max}`,
+							useVariables: true,
 							required: true,
-						})
+						});
 					}
 					soloActions[soloID].options.push({
 						type: 'dropdown',
@@ -80,7 +79,10 @@ export function buildSoloDefs(self) {
 					})
 					soloActions[soloID].callback = async (action, context) => {
 						const opt = action.options
-						let nVal = opt.num ? opt.num : 1
+
+						opt.num = parseInt(opt.num)
+
+						let nVal = !Number.isNaN(opt.num) ? opt.num : 1
 						let strip = '/-stat/solosw/' + pad0(self.soloOffset[action.actionId] + nVal)
 						let arg = {
 							type: 'i',
@@ -127,15 +129,14 @@ export function buildSoloDefs(self) {
 					}
 					if (ch.min != ch.max) {
 						soloFeedbacks[soloID].options.push({
-							type: 'number',
+							type: 'textinput',
 							label: ch.description + ' number',
 							id: 'theChannel',
 							default: 1,
-							min: ch.min,
-							max: ch.max,
-							range: false,
+							tooltip: `Value should correspond to the proper number between ${ch.min} and ${ch.max}`,
+							useVariables: true,
 							required: true,
-						})
+						});
 					}
 				}
 				break
