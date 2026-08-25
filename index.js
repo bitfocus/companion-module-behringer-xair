@@ -12,7 +12,7 @@ import { buildMeterDefs } from './buildMeterDefs.js'
 import { buildHADefs } from './buildHADefs.js'
 import { getConfigFields } from './config.js'
 import { ICON_SOLO } from './icons.js'
-import { pad0 } from './helpers.js'
+import { pad0, linFaderToDB } from './helpers.js'
 import os from 'os'
 
 class BAirInstance extends InstanceBase {
@@ -28,13 +28,12 @@ class BAirInstance extends InstanceBase {
 		this.muteFeedbacks = {}
 		this.meterFeedbacks = {}
 		this.colorFeedbacks = {}
+		this.haFeedbacks = {}
 		this.variableDefs = []
 		this.fLevels = {}
 		this.blinkingFB = {}
 		this.crossFades = {}
 		this.unitsFound = {}
-
-		this.debugLevel = process.env.DEVELOPER ? 2 : 0
 		this.PollCount = 10
 		this.PollTimeout = 40
 		this.getConfigFields = getConfigFields
@@ -43,6 +42,18 @@ class BAirInstance extends InstanceBase {
 	}
 
 	async init(config) {
+		const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+		await wait(1000)
+		this.config = config
+
+		this.devMode = process.env.DEVELOPER
+		if (this.devMode) {
+			await wait(3000)
+		}
+
+		this.debugLevel = process.env.DEVELOPER ? 2 : 0
+
 		this.config = config
 
 		if (!this.config.model) {
@@ -545,29 +556,6 @@ class BAirInstance extends InstanceBase {
 		return Math.floor(res * 10000) / 10000
 	}
 
-	/**
-	 * Calculate linear fader dB value for a given 'step'
-	 * 	depending on total 'steps'
-	 * @param {integer} i - which step
-	 * @param {integer} steps - number of steps for this fader parameter
-	 * @returns {float}
-	 */
-	linFaderToDB(f, lim = { fmin: -12, fmax: 20 }) {
-		return (lim.fmin + (lim.fmax - lim.fmin) * f).toFixed(1)
-	}
-
-	/**
-	 * Calculate logarithmic fader dB value for a given 'step'
-	 * 	depending on total 'steps'
-	 * @param {integer} i - which step
-	 * @param {integer} steps - number of steps for this fader parameter
-	 * @returns {float}
-	 */
-	logFaderToDB(f, steps) {
-		let res = i / (steps - 1)
-		return Math.floor((fmin * exp(log(fmax / fmin) * f)) / 10000)
-	}
-
 	faderToDB(f, steps, rp) {
 		// “f” represents OSC float data. f: [0.0, 1.0]
 		// “d” represents the dB float data. d:[-oo, +10]
@@ -626,6 +614,8 @@ class BAirInstance extends InstanceBase {
 						case 'on':
 						case 'lr':
 						case 'hpon':
+						case 'invert':
+						case 'rtnsw':
 						case '1':
 						case '2':
 						case '3':
@@ -665,16 +655,32 @@ class BAirInstance extends InstanceBase {
 							}
 							break
 						case 'gain': // headamp
-							let ha = parseInt(node.split('/')[2])
+							v = Math.floor(v * 10000) / 10000
+							//							let ha = parseInt(node.split('/')[2])
 							this.xStat[node].gain = v
 							this.setVariableValues({
 								[this.xStat[node].varID + '_p']: Math.round(v * 100),
-								[this.xStat[node].varID + '_d']: this.linFaderToDB(
+								[this.xStat[node].varID + '_d']: linFaderToDB(
 									v,
-									this.LIMITS[this.xStat[node].trimVal]
+									this.LIMITS['h' + this.xStat[node].fSteps]
 									//{ fmin: this.LIMITS[this.xStat[node].trimVal].fmin, fmax: this.LIMITS[this.xStat[node].trimVal].fmax},
 								),
 							})
+							this.xStat[node].idx = this.fLevels[this.xStat[node].fSteps].findIndex((i) => i >= v)
+							break
+						case 'rtntrim': // USB Return trim
+							v = Math.floor(v * 10000) / 10000
+							//							let usb = parseInt(node.split('/')[2])
+							this.xStat[node].rtntrim = v
+							this.setVariableValues({
+								[this.xStat[node].varID + '_p']: Math.round(v * 100),
+								[this.xStat[node].varID + '_d']: linFaderToDB(
+									v,
+									this.LIMITS['r' + this.xStat[node].fSteps]
+									//{ fmin: this.LIMITS[this.xStat[node].trimVal].fmin, fmax: this.LIMITS[this.xStat[node].trimVal].fmax},
+								),
+							})
+							this.xStat[node].idx = this.fLevels[this.xStat[node].fSteps].findIndex((i) => i >= v)
 							break
 						case 'phantom':
 							this.xStat[node].pp = !!v
@@ -958,6 +964,7 @@ class BAirInstance extends InstanceBase {
 		Object.assign(feedbacks, this.muteFeedbacks)
 		Object.assign(feedbacks, this.colorFeedbacks)
 		Object.assign(feedbacks, this.meterFeedbacks)
+		Object.assign(feedbacks, this.haFeedbacks)
 		this.setFeedbackDefinitions(feedbacks)
 	}
 
