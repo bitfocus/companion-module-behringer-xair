@@ -18,30 +18,31 @@ export function buildConstants(self) {
 		{ op: '_r', act: 'Recall' },
 	]
 
-		self.LEVEL_CHOICES = []
-		self.levelOpts.forEach((val) => {
-			self.LEVEL_CHOICES.push({
-				id: val.op,
-				label: val.act,
-			})
+	self.LEVEL_CHOICES = []
+	self.levelOpts.forEach((val) => {
+		self.LEVEL_CHOICES.push({
+			id: val.op,
+			label: val.act,
 		})
+	})
 
 	// pre-set linear values for various other 'levels'
-	// todo: continue from here
+
 	self.LIMITS = {
 		1024: { fmin: -100, fmax: 10 }, // main faders
 		161: { fmin: -100, fmax: 10 }, // sends, solo level
 		101: { fmin: -100, fmax: 100 }, // pan
-		145: { fmin: -12, fmax: 60 }, // headamp gain
-		73: { fmin: -18, fmax: 18 }, // solo source trim
-		65: { fmin: -12, fmax: 20 }, // aux gain
+		h145: { fmin: -12, fmax: 60 }, // headamp gain
+		r145: { fmin: -18, fmax: +18 }, // USB return trim
+		73: { fmin: -18, fmax: 12 }, // solo source trim
+		h65: { fmin: -12, fmax: 20 }, // aux gain
 		40: { fmin: -40, fmax: 0 }, // solo dim att/gain
 	}
 
 	const lvls = [
 		161, // sends, solo level
 		101, // pan
-		145, // headamp gain
+		145, // headamp gain / return trim
 		73, // solo source trim
 		65, // aux gain
 		40, // solo dim att/gain
@@ -176,7 +177,7 @@ export function buildConstants(self) {
 					12: { name: `XLR ${c}`, has: true },
 					16: { name: `XLR ${c}`, has: true },
 					18: { name: `XLR ${c}`, has: true },
-					trimVal: 145,
+					fSteps: 145,
 					ph: true,
 				}
 				break
@@ -188,7 +189,7 @@ export function buildConstants(self) {
 					12: { name: '', has: false },
 					16: { name: `XLR ${c}`, has: true },
 					18: { name: `XLR ${c}`, has: true },
-					trimVal: 145,
+					fSteps: 145,
 					ph: true,
 				}
 				break
@@ -204,7 +205,7 @@ export function buildConstants(self) {
 					12: { name: '', has: false },
 					16: { name: '', has: false },
 					18: { name: `XLR ${c}`, has: true },
-					trimVal: 145,
+					fSteps: 145,
 					ph: true,
 				}
 				break
@@ -213,7 +214,7 @@ export function buildConstants(self) {
 					12: { name: `TRS ${c - 16}`, has: true },
 					16: { name: `TRS ${c - 16}`, has: true },
 					18: { name: 'RCA', has: true },
-					trimVal: 65,
+					fSteps: 65,
 					ph: false,
 				}
 				break
@@ -228,7 +229,7 @@ export function buildConstants(self) {
 					12: { name: `TRS ${c - 16}`, has: true },
 					16: { name: `TRS ${c - 16}`, has: true },
 					18: { name: '', has: false },
-					trimVal: 65,
+					fSteps: 65,
 					ph: false,
 				}
 				break
