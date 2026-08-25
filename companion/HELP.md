@@ -51,12 +51,17 @@ Contributions for development and maintenance of this open source module are alw
 | Solo Dim                                                    | Dims the Solo output level to the value configured in the console.                                                 |
 | Solo Mute                                                   | Mutes the Solo output                                                                                              |
 | Solo Mono                                                   | Controls the Mono mix-down of the Solo output                                                                      |
+| Headamp Gain: Adjust or Set                                 | Modify the headamp gain for selected input                                                                         |
+| Phantom: Set or Toggle                                      | Set Phantom power for selected input                                                                               |
+| USB Trim: Adjust or Set                                     | Modify the USB Return trim value for selected input (18 only)                                                      |
+| Polarity: Set or Toggle                                     | Enable Polarity invert for selected input                                                                          |
+| HPF: Set or Toggle                                          | Enable HPF for selected input                                                                                      |
 | Snapshot: Load                                              | Loads the given Snapshot from the console internal Snapshot list 1-64                                              |
 | Snapshot: Save                                              | Save the given Snapshot to the console internal Snapshot list 1-64                                                 |
 | Snapshot: Load Previous                                     | Loads the previous (numerical) snapshot **see notes*                                                               |
 | Snapshot: Load Next                                         | Loads the next (numerical) snapshot **see notes*                                                                   |
 | Snapshot: Save Current                                      | Saves/overwrites/updates the current snapshot (NO CONFIRMATION) **see notes*                                       |
-| Tape Operation                                              | Stop,Play,PlayPause,Record,RecordPause,Fast Forward,Rewind of the tape Deck                                        |
+| Tape Operation                                              | Stop,Play,PlayPause,Record,RecordPause,Fast Forward,Rewind of the USB Playback                                     |
 
 **Note *mute, solo, processing*:** All mute, solo, and processing actions also have a Toggle option that inverts the current state of the board setting.
 
@@ -115,6 +120,15 @@ Contributions for development and maintenance of this open source module are alw
 | **$(INSTANCENAME:f_fxsend#_d)**  | FX Bus Master # Fader dB                        |
 | **$(INSTANCENAME:f_fxsend#_p)**  | FX Bus Master # Fader Percent                   |
 | **$(INSTANCENAME:f_fxsend#_rp)** | FX Bus Master # Fader Relative Loudness Percent |
+| **$(INSTANCENAME:h_gain#_p)**    | Headamp Gain for XLR #, Percent                 |
+| **$(INSTANCENAME:h_gain#_d)**    | Headamp Gain for XLR #, dB                      |
+| **$(INSTANCENAME:h_pp#)**        | Headamp Phantom Power for XLR #                 |
+| **$(INSTANCENAME:t_ch#_p)**      | USB Return Trim for Channel #, Percent          |
+| **$(INSTANCENAME:t_ch#_d)**      | USB Return Trim for Channel #, dB               |
+| **$(INSTANCENAME:t_rtn#_p)**     | USB Return Trim for FX Return #, Percent        |
+| **$(INSTANCENAME:t_rtn#_d)**     | USB Return Trim for FX Return #, dB             |
+| **$(INSTANCENAME:t_rtn_aux_p)**  | USB Return Trim for Aux(RCA)/USB, Percent       |
+| **$(INSTANCENAME:t_rtn_aux_d)**  | USB Return Trim for Aux(RCA)/USB, dB            |
 | **$(INSTANCENAME:m_source)**     | Current Monitor Output Source                   |
 | **$(INSTANCENAME:m_chmode)**     | Channel Solo Mode (AFL/PFL)                     |
 | **$(INSTANCENAME:m_busmode)**    | Bus Solo Mode (AFL/PFL)                         |
@@ -133,7 +147,7 @@ Contributions for development and maintenance of this open source module are alw
 
 **Note *Snapshot numbers*:** Replace {num} with the desired 2-digit snapshot number: $(xair:s_name_04). A snapshot with no name will have a default name of '#{num}': #04 (it is probably empty).
 
-**Note *Relative Loudness*:** This variable shows the percieved loudness with 0dB fader gain as a reference (100%). +/- 10dB changes become x2/x0.5 respectively as per the Loudness Equation (10 x log2). This allows for a more non-savy user friendly readout. *See table below.*
+**Note *Relative Loudness*:** This variable shows the perceived loudness with 0dB fader gain as a reference (100%). +/- 10dB changes become x2/x0.5 respectively as per the Loudness Equation (10 x log2). This allows for a more non-savvy user friendly readout. *See table below.*
 
 **Example values:**
 
@@ -155,12 +169,16 @@ Contributions for development and maintenance of this open source module are alw
 | **Color when Main LR muted** *    | Sets the button color if the Main LR is muted                                                |
 | **Color when USB/Aux in muted** * | Sets the button color if the USB/Aux in is muted                                             |
 | **Color when Mute Group on** *    | Sets the button color if the selected Mute Group is on                                       |
-| **Color of Channel label**        | Sets the button color to match the seleted channel (Channel/Bus/DCA/FX send/FX return) label |
+| **Color of Channel label**        | Sets the button color to match the selected channel (Channel/Bus/DCA/FX send/FX return) label |
 | **Color of Main LR label**        | Sets the button color to match the Main LR label                                             |
 | **Color of USB/Aux label**        | Sets the button color to match the USB/Aux label                                             |
 | **Channel Solo** *                | Changes the button when (Channel/Bus/DCA/FX send/FX return) Solo on                          |
 | **Main LR Solo** *                | Changes the button when Main LR Solo on                                                      |
 | **USB/Aux Solo** *                | Changes the button when USB/Aux Solo on                                                      |
+| **Phantom Power** *               | Changes the button when Phantom Power on                                                     |
+| **Use USB Return** *              | Changes the button when Input source is USB                                                  |
+| **Polarity** *                    | Changes the button when Polarity Reverse is on                                               |
+| **High Pass** *                   | Changes the button when HPF is on                                                            |
 | **Processing status** *           | Changes the button according to the selected channel/process status                          |
 | **Monitor Source** *              | Changes the button when Monitor Source is set to selected option                             |
 | **Color when Solo Mute** *        | Sets the button color when the Solo output is muted                                          |
