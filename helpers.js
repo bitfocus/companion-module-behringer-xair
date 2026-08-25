@@ -2,6 +2,30 @@ import { Regex } from '@companion-module/base'
 // helper functions
 
 const REGEX_PERCENT = new RegExp(Regex.PERCENT)
+
+/**
+ * Calculate linear fader dB value for a given 'step'
+ * 	depending on total 'steps'
+ * @param {integer} i - which step
+ * @param {integer} steps - number of steps for this fader parameter
+ * @returns {float}
+ */
+export function linFaderToDB(f, lim = { fmin: -12, fmax: 20 }) {
+	return (lim.fmin + (lim.fmax - lim.fmin) * f).toFixed(1)
+}
+
+/**
+ * Calculate logarithmic fader dB value for a given 'step'
+ * 	depending on total 'steps'
+ * @param {integer} i - which step
+ * @param {integer} steps - number of steps for this fader parameter
+ * @returns {float}
+ */
+export function logFaderToDB(f, steps) {
+	let res = i / (steps - 1)
+	return Math.floor((fmin * exp(log(fmax / fmin) * f)) / 10000)
+}
+
 /**
  * Returns the passed integer left-padded with '0's
  * Will truncate result length is greater than 'len'
@@ -66,7 +90,7 @@ export async function fadeTo(cmd, strip, opt, self) {
 	const faderLim = !!opt.faderLim
 	const faderMax = +self.config.faderMax || 0.75
 	const steps = stat.fSteps
-	const span = parseFloat(opt.duration)
+	const span = parseFloat(opt.duration || 0)
 	const oldVal = stat[node]
 	const oldIdx = stat.idx
 	const byVal = (opTicks * steps) / 100
@@ -94,7 +118,7 @@ export async function fadeTo(cmd, strip, opt, self) {
 			r = parseFloat(opt[node] || opt.fad)
 	}
 	// if max fader limit is set
-	r = Math.min(r, faderLim ? faderMax: r)
+	r = Math.min(r, faderLim ? faderMax : r)
 
 	// set up cross fade?
 	if (span > 0 && r >= 0) {

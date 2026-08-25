@@ -13,8 +13,7 @@ export function buildStripDefs(self) {
 	let trimActions = {}
 	let panActions = {}
 	let panFeedbacks = {}
-	// let fadeActions = {}
-	// let storeActions = {}
+	let trimFeedbacks = {}
 	let levelActions = {}
 	let muteFeedbacks = {}
 	let colorFeedbacks = {}
@@ -47,6 +46,14 @@ export function buildStripDefs(self) {
 		hpf: {
 			node: 'preamp/hpon',
 			desc: 'High Pass Filter',
+		},
+		invert: {
+			node: 'preamp/invert',
+			desc: 'Invert Polarity',
+		},
+		rtnsw: {
+			node: 'preamp/rtnsw',
+			desc: 'Use USB Source (X18 only)',
 		},
 	}
 
@@ -478,6 +485,147 @@ export function buildStripDefs(self) {
 		}
 	}
 
+	function makeTrimDefinitions(aId, theStrip) {
+		const trimName = 'USB Trim (x18 only)'
+		let trimLabel = theStrip.description
+		if (theStrip.digits > 0) {
+			// add trim variables
+			for (let s = theStrip.min; s < theStrip.max; s++) {
+				const num = aId == '/ch/' ? pad0(s) : `${s}`
+				const vID = `t_${theStrip.id}${s}`
+				const fID = `t_${theStrip.id}${num}`
+				const theID = aId + `${num}/preamp/rtntrim`
+
+				defVariables.push({
+					name: `${trimLabel} %{s} Trim (dB)`,
+					variableId: `t_${theStrip.id}${s}_d`,
+				})
+				defVariables.push({
+					name: `${trimLabel} %{s} Trim (%)`,
+					variableId: `t_${theStrip.id}${s}_p`,
+				})
+				self.fbToStat[fID] = theID
+				self.xStat[theID] = {
+					varID: vID,
+					fbID: fID,
+					valid: false,
+					fSteps: 145,
+					polled: 0,
+				}
+			}
+			trimLabel += ` (${theStrip.min}-${theStrip.max})`
+		} else {
+			const vID = `t_${theStrip.id}`
+			const fID = `t_${theStrip.id}`
+			const theID = aId + `preamp/rtntrim`
+			defVariables.push({
+				name: `Aux Trim (dB)`,
+				variableId: `t_rtn_aux_d`,
+			})
+			defVariables.push({
+				name: `Aux Trim (%)`,
+				variableId: `t_rtn_aux_p`,
+			})
+			self.fbToStat[fID] = theID
+			self.xStat[theID] = {
+				varID: vID,
+				fbID: fID,
+				valid: false,
+				fSteps: 145,
+				polled: 0,
+			}
+		}
+		if (!!trimActions['rtntrim']) {
+			// add strip option to action
+			trimActions['rtntrim'].options[0].choices.push({
+				id: aId,
+				label: trimLabel,
+			})
+			trimActions['rtntrim'].options[1].label
+		}
+		if (trimActions['rtntrim'] == undefined) {
+			// new action
+			trimActions['rtntrim'] = {
+				name: trimName,
+				options: [], // default empty
+			}
+			trimActions['rtntrim'].options = [
+				{
+					type: 'dropdown',
+					label: 'Type',
+					id: 'type',
+					choices: [
+						{
+							id: aId,
+							label: trimLabel,
+						},
+					],
+					default: aId,
+				},
+				{
+					type: 'number',
+					label: theStrip.description,
+					id: 'num',
+					default: 1,
+					min: theStrip.min,
+					max: theStrip.max,
+					range: false,
+					isVisible: (options) => options.type != '/rtn/aux/',
+				},
+				{
+					type: 'dropdown',
+					label: 'Action',
+					id: 'act',
+					choices: self.LEVEL_CHOICES.slice(0, 2),
+					default: '',
+				},
+				{
+					type: 'checkbox',
+					label: 'Set as DB?',
+					id: 'db',
+					default: true,
+					isVisible: (options) => options.act == '',
+				},
+				{
+					type: 'textinput',
+					label: 'Level',
+					id: 'fad',
+					default: '0.0',
+					useVariables: true,
+					isVisible: (options) => options.act == '',
+				},
+				{
+					type: 'textinput',
+					label: 'By',
+					id: 'ticks',
+					default: '1',
+					useVariables: true,
+					isVisible: (options) => options.act == '_a',
+				},
+			]
+			trimActions['rtntrim'].callback = async (action, context) => {
+				let opt = action.options
+				const aId = opt.act
+				const nVal = opt.type == '/ch/' ? pad0(opt.num) : opt.type == '/rtn/' ? opt.num : ''
+				const strip = opt.type + nVal + '/preamp/rtntrim'
+				if (opt.db) {
+					const lim = self.LIMITS['r' + self.xStat[strip].fSteps]
+					opt.fad = (opt.fad - lim.fmin) / (lim.fmax - lim.fmin)
+				}
+				try {
+					let fVal = await fadeTo(aId, strip, opt, self)
+					self.updateStatus(InstanceStatus.Ok)
+					self.paramError = false
+					self.sendOSC(strip, { type: 'f', value: fVal })
+				} catch (error) {
+					const err = [action.controlId, error.message].join(' → ')
+					self.updateStatus(InstanceStatus.BadConfig, err)
+					self.paramError = true
+				}
+			}
+		}
+	}
+
 	function makeSendVars(chID, stripID, theStrip, digits = 2, c = 0) {
 		for (let b = 1; b < 11; b++) {
 			let bOrF = b < 7 ? 'b' : 'f'
@@ -835,7 +983,7 @@ export function buildStripDefs(self) {
 					procActions[mID].options[1].label += `, ${theStrip.description}`
 				} else {
 					procActions[mID] = {
-						name: defProc[p].desc + ' State',
+						name: defProc[p].desc,
 						options: [
 							{
 								type: 'dropdown',
@@ -875,7 +1023,9 @@ export function buildStripDefs(self) {
 							const opt = action.options
 							const nVal = opt.type == '/ch/' ? pad0(opt.num) : opt.num
 							const strip =
-								action.actionId == 'lr' ? opt.type + nVal + '/mix/lr' : opt.type + nVal + '/' + action.actionId + '/on'
+								action.actionId == 'lr'
+									? opt.type + nVal + '/mix/lr'
+									: opt.type + nVal + '/' + defProc[action.actionId].node // + '/on'
 							const arg = {
 								type: 'i',
 								value: setToggle(self.xStat[strip].isOn, opt.set),
@@ -1011,6 +1161,11 @@ export function buildStripDefs(self) {
 
 		if (theStrip.hasPan) {
 			makePanActions(chID + '/', theStrip)
+		}
+
+		if (theStrip.hasTrim) {
+			// build trim actions / vars / feedbacks
+			makeTrimDefinitions(chID + '/', theStrip)
 		}
 
 		if (d == 0) {
@@ -1351,7 +1506,7 @@ export function buildStripDefs(self) {
 	Object.assign(self.xStat, stat)
 	Object.assign(self.fbToStat, fbToStat)
 	//Object.assign(self.actionDefs, fadeActions)
-	Object.assign(self.actionDefs, levelActions, muteActions, panActions, procActions) //, storeActions)
+	Object.assign(self.actionDefs, levelActions, muteActions, panActions, procActions, trimActions) //, storeActions)
 	Object.assign(self.muteFeedbacks, muteFeedbacks, panFeedbacks)
 	Object.assign(self.colorFeedbacks, colorFeedbacks)
 	self.variableDefs.push(...defVariables)
