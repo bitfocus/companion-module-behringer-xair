@@ -163,7 +163,7 @@ export function buildStripDefs(self) {
 						label: 'Bus',
 						id: 'busNum',
 						choices: busOpts,
-						default: 1,
+						default: '1',
 					})
 					levelActions[newId].callback = async (action, context) => {
 						const opt = action.options
@@ -374,11 +374,11 @@ export function buildStripDefs(self) {
 						label: 'Bus',
 						id: 'busNum',
 						choices: [
-							{ id: 1, label: '1-2' },
-							{ id: 3, label: '3-4' },
-							{ id: 5, label: '5-6' },
+							{ id: '1', label: '1-2' },
+							{ id: '3', label: '3-4' },
+							{ id: '5', label: '5-6' },
 						],
-						default: 1,
+						default: '1',
 					})
 					panActions[panID].callback = async (action, context) => {
 						const opt = action.options
@@ -688,7 +688,7 @@ export function buildStripDefs(self) {
 			let err = ''
 			switch (type) {
 				case 'ch':
-					v = parseInt(await ctx.parseVariablesInString(fb.options.ch))
+					v = parseInt(await ctx.parseVariablesInString(`${fb.options.ch}`))
 					if (v < 1 || v > 16) {
 						err = `Channel number out of range: ${fb.options.ch}`
 					} else {
@@ -696,7 +696,7 @@ export function buildStripDefs(self) {
 					}
 					break
 				case 'rtn':
-					v = parseInt(await ctx.parseVariablesInString(fb.options.rtn))
+					v = parseInt(await ctx.parseVariablesInString(`${fb.options.rtn}`))
 					if (v < 1 || v > 4) {
 						err = `FX Return number out of range: ${fb.options.rtn}`
 					} else {
@@ -704,7 +704,7 @@ export function buildStripDefs(self) {
 					}
 					break
 				case 'bus':
-					v = parseInt(await ctx.parseVariablesInString(fb.options.send))
+					v = parseInt(await ctx.parseVariablesInString(`${fb.options.send}`))
 					if (v < 1 || v > 6) {
 						fbID += `${v}`
 					} else {
